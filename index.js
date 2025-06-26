@@ -181,11 +181,3 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN); // ELIMINAR DE LA LINEA DE ABAJO POR SI NO FUNCIONA
-
-const EMBED_PING_URL = process.env.EMBED_EDITOR_URL;
-
-setInterval(() => {
-  axios.get(EMBED_PING_URL)
-    .then(() => console.log('✅ Ping exitoso al editor de embeds'))
-    .catch(err => console.error('❌ Error en ping al editor:', err.message));
-}, 10 * 60 * 1000); // cada 10 minutos
