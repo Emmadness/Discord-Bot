@@ -23,6 +23,7 @@ client.once('ready', async () => {
 async function registerSlashCommands() {
   const commands = [
     new SlashCommandBuilder().setName('test').setDescription('Prueba el bot'),
+    new SlashCommandBuilder().setName('training').setDescription('Nuevo training').addStringOption(opt => opt.setName('nombre').setDescription('Nombre del usuario').setRequired(true)),
     new SlashCommandBuilder().setName('join').setDescription('Nuevo conductor').addStringOption(opt => opt.setName('nombre').setDescription('Nombre del usuario').setRequired(true)),
     new SlashCommandBuilder().setName('media').setDescription('Se une al Media Team').addStringOption(opt => opt.setName('nombre').setDescription('Nombre del usuario').setRequired(true)),
     new SlashCommandBuilder().setName('hr').setDescription('Se une a Human Resources').addStringOption(opt => opt.setName('nombre').setDescription('Nombre del usuario').setRequired(true)),
@@ -120,6 +121,9 @@ client.on('interactionCreate', async interaction => {
       case 'test':
         await sendTeamUpdate(channel, 'Ejemplo: Un nuevo miembro se unió al equipo 🎉');
         break;
+      case 'training':
+        await sendTeamUpdate(channel, `• **${name}** se unió como **Conductor en Entrenamiento** de LATAM Express. 🚚`, 0x2ECC71);
+        break;	    
       case 'join':
         await sendTeamUpdate(channel, `• **${name}** se unió como **Conductor** de LATAM Express. 🚚`, 0x2ECC71);
         break;
