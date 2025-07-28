@@ -16,7 +16,7 @@ const lastEmbeds = new Map();
 
 client.once('ready', async () => {
   console.log(`✅ Bot conectado como ${client.user.tag}`);
-  client.user.setActivity('TMP - On Duty', { type: 0 });
+  client.user.setActivity('TruckersMP', { type: 0 });
   await registerSlashCommands();
 });
 
