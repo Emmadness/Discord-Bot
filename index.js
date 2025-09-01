@@ -30,7 +30,7 @@ async function registerSlashCommands() {
     new SlashCommandBuilder().setName('admin').setDescription('Se une como Staff (Admin)').addStringOption(opt => opt.setName('nombre').setDescription('Nombre del usuario').setRequired(true)),
     new SlashCommandBuilder().setName('staff').setDescription('Se une al Staff general').addStringOption(opt => opt.setName('nombre').setDescription('Nombre del usuario').setRequired(true)),
     new SlashCommandBuilder().setName('leave').setDescription('Abandona la VTC').addStringOption(opt => opt.setName('nombre').setDescription('Nombre del usuario').setRequired(true)),
-    new SlashCommandBuilder().setName('ban').setDescription('Usuario baneado de LATAM Logística').addStringOption(opt => opt.setName('nombre').setDescription('Nombre del usuario').setRequired(true)),
+    new SlashCommandBuilder().setName('ban').setDescription('Usuario baneado de la VTC').addStringOption(opt => opt.setName('nombre').setDescription('Nombre del usuario').setRequired(true)),
     new SlashCommandBuilder().setName('externo').setDescription('Envía el mensaje del embed externo'),
     new SlashCommandBuilder()
       .setName('embed')
@@ -57,7 +57,7 @@ async function registerSlashCommands() {
 
 async function sendTeamUpdate(target, text, color = 0x3498DB) {
   const embed = {
-    title: 'LATAM Logística Update',
+    title: 'Rotra Club®',
     description: text,
     color: color
   };
@@ -122,28 +122,28 @@ client.on('interactionCreate', async interaction => {
         await sendTeamUpdate(channel, 'Ejemplo: Un nuevo miembro se unió al equipo 🎉');
         break;
       case 'training':
-        await sendTeamUpdate(channel, `• **${name}** se unió como **Conductor en Entrenamiento** de LATAM Logística. 🚚`, 0x2ECC71);
+        await sendTeamUpdate(channel, `• **${name}** se unió como **Trial Driver** de Rotra Club ®. 🚚`, 0x2ECC71);
         break;	    
       case 'join':
-        await sendTeamUpdate(channel, `• **${name}** se unió como **Conductor** de LATAM Logística. 🚚`, 0x2ECC71);
+        await sendTeamUpdate(channel, `• **${name}** se unió como **Driver** de Rotra Club ®. 🚚`, 0x2ECC71);
         break;
       case 'media':
-        await sendTeamUpdate(channel, `• **${name}** se unió al **Media Team** de LATAM Logística. 📸`, 0x9B59B6);
+        await sendTeamUpdate(channel, `• **${name}** se unió al **Media Team** de Rotra Club ®. 📸`, 0x9B59B6);
         break;
       case 'hr':
-        await sendTeamUpdate(channel, `• **${name}** se unió a **Human Resources** de LATAM Logística. 👩‍💻`, 0x9B59B6);
+        await sendTeamUpdate(channel, `• **${name}** se unió a **Human Resources** de Rotra Club ®. 👩‍💻`, 0x9B59B6);
         break;
       case 'admin':
-        await sendTeamUpdate(channel, `• **${name}** se unió como parte del **Staff de LATAM Logística**. 🛠️`, 0xF1C40F);
+        await sendTeamUpdate(channel, `• **${name}** se unió como parte del **Staff de Rotra Club ®**. 🛠️`, 0xF1C40F);
         break;
       case 'staff':
-        await sendTeamUpdate(channel, `• **${name}** se ha unido al **Staff de LATAM Logística**. 🧩`, 0x1F618D);
+        await sendTeamUpdate(channel, `• **${name}** se ha unido al **Staff de Rotra Club ®**. 🧩`, 0x1F618D);
         break;
       case 'leave':
         await sendTeamUpdate(channel, `• **${name}** dejó la VTC. ¡Le deseamos éxito en su camino! 👋`, 0xE74C3C);
         break;
       case 'ban':
-        await sendTeamUpdate(channel, `• **${name}** ha sido **baneado** de LATAM Logística. 🚫`, 0xC0392B);
+        await sendTeamUpdate(channel, `• **${name}** ha sido **baneado** de Rotra Club ®. 🚫`, 0xC0392B);
         break;
       case 'externo':
         await interaction.deferReply({ flags: 64 });
@@ -185,3 +185,4 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN); // ELIMINAR DE LA LINEA DE ABAJO POR SI NO FUNCIONA
+
