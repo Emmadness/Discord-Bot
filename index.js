@@ -11,7 +11,9 @@ const client = new Client({
   ]
 });
 
+// IDs de usuarios y roles permitidos
 const allowedUsers = ['640315344916840478', '192746644939210763'];
+const allowedRoles = ['1411835087120629952', '1386877603130114098', '1386877176124674109']; // aquí pones IDs de roles
 const lastEmbeds = new Map();
 
 client.once('ready', async () => {
@@ -74,12 +76,15 @@ client.on('interactionCreate', async interaction => {
   const subcommand = interaction.options.getSubcommand(false);
 
   try {
-    if (!allowedUsers.includes(interaction.user.id)) {
-      return await interaction.reply({
-        content: '❌ No tienes permiso para usar este comando.',
-        flags: 64
-      });
-    }
+    if (
+  !allowedUsers.includes(interaction.user.id) && // ni está en la lista de usuarios
+  !interaction.member.roles.cache.some(role => allowedRoles.includes(role.id)) // ni tiene un rol permitido
+) {
+  return await interaction.reply({
+    content: '❌ No tienes permiso para usar este comando.',
+    flags: 64
+  });
+}
 
     if (command === 'embed') {
       if (subcommand === 'create') {
@@ -185,6 +190,7 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN); // ELIMINAR DE LA LINEA DE ABAJO POR SI NO FUNCIONA
+
 
 
 
