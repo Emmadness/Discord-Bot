@@ -85,7 +85,7 @@ client.on('interactionCreate', async interaction => {
       if (subcommand === 'create') {
         const code = interaction.options.getString('codigo');
         try {
-          const url = `https://latamexpress-embed.onrender.com/api/embed/${code}`;
+          const url = `https://embeds.rotraclub.onrender.com/api/embed/${code}`;
           const response = await axios.get(url);
           const embedData = response.data;
 
@@ -185,5 +185,6 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN); // ELIMINAR DE LA LINEA DE ABAJO POR SI NO FUNCIONA
+
 
 
