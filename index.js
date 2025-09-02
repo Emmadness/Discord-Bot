@@ -8,7 +8,6 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-	GatewayIntentBits.GuildMembers,
   ]
 });
 
@@ -190,38 +189,8 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-const WELCOME_CHANNEL_ID = "1386870474847293470"; // 🔹 ID del canal de bienvenida
-const AUTO_ROLE_ID = "1386874665288339508";       // 🔹 ID del rol automático
-
-client.on("guildMemberAdd", async (member) => {
-  try {
-    // 1️⃣ Enviar mensaje de bienvenida
-    const channel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
-    if (channel) {
-      const embed = new EmbedBuilder()
-        .setTitle("👋 ¡Bienvenido a Rotra Club ®!")
-        .setDescription(
-          `Hola **${member.user.username}**, gracias por unirte 🚛✨\n\n` +
-          `Revisa el canal de reglas y prepárate para rodar con nosotros.`
-        )
-        .setColor(0x2ECC71)
-        .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-        .setFooter({ text: "Rotra Club ® • TruckersMP" });
-
-      await channel.send({ content: `¡Bienvenido <@${member.id}>!`, embeds: [embed] });
-    }
-
-    // 2️⃣ Asignar rol automático
-    const role = member.guild.roles.cache.get(AUTO_ROLE_ID);
-    if (role) {
-      await member.roles.add(role);
-    }
-  } catch (error) {
-    console.error("❌ Error en bienvenida:", error);
-  }
-});
-
 client.login(process.env.DISCORD_TOKEN); // ELIMINAR DE LA LINEA DE ABAJO POR SI NO FUNCIONA
+
 
 
 
