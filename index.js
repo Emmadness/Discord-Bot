@@ -16,7 +16,7 @@ const lastEmbeds = new Map();
 
 client.once('ready', async () => {
   console.log(`✅ Bot conectado como ${client.user.tag}`);
-  client.user.setActivity('a TruckersMP', { type: 0 });
+  client.user.setActivity('Gestionando la VTC', { type: 3 });
   await registerSlashCommands();
 });
 
@@ -185,5 +185,6 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN); // ELIMINAR DE LA LINEA DE ABAJO POR SI NO FUNCIONA
+
 
 
