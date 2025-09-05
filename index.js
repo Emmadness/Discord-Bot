@@ -20,11 +20,7 @@ client.once('ready', async () => {
   console.log(`✅ Bot conectado como ${client.user.tag}`);
   client.user.setActivity('Gestionando la VTC', { type: 3 });
   await registerSlashCommands();
-
-  console.log("🚀 Iniciando monitor de drivers...");
-  startStatusUpdater();
 });
-
 
 async function registerSlashCommands() {
   const commands = [
@@ -193,92 +189,7 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-// =======================
-// 🚛 MONITOR DE DRIVERS ONLINE
-// =======================
-
-const VTC_ID = '81848'; // <-- pon aquí el ID numérico de tu VTC en TruckersMP
-const UPDATE_CHANNEL_ID = '1386870650500677642'; // Canal de Discord donde se publicará el embed
-let statusMessage = null;
-
-// Obtener miembros de la VTC
-async function getVTCMembers() {
-  try {
-    const res = await axios.get(`https://api.truckersmp.com/v2/vtc/${VTC_ID}/members`);
-    return res.data.response || [];
-  } catch (err) {
-    console.error("❌ Error obteniendo miembros de VTC:", err);
-    return [];
-  }
-}
-
-// Verificar estado de un jugador
-async function getPlayerStatus(tmpId) {
-  try {
-    const res = await axios.get(`https://api.truckersmp.com/v2/player/${tmpId}`);
-    const data = res.data.response;
-    return {
-      name: data.name,
-      online: data.online,
-      server: data.server || 'Offline',
-      game: data.game === 1 ? 'ETS2' : (data.game === 2 ? 'ATS' : 'Desconocido'),
-      steamId: data.steamID
-    };
-  } catch (err) {
-    console.error("❌ Error obteniendo jugador:", err);
-    return null;
-  }
-}
-
-// Construir embed con el estado de los drivers
-async function buildEmbed() {
-  const members = await getVTCMembers();
-  let description = '';
-
-  for (const m of members) {
-    const status = await getPlayerStatus(m.id);
-    if (!status) continue;
-
-    if (status.online) {
-      description += `🟢 **${status.name}** — ${status.game} (${status.server})\n`;
-      description += `[🔗 Ver en mapa](https://map.truckyapp.com/?player=${status.steamId})\n\n`;
-    } else {
-      description += `⚫ **${status.name}** — Offline\n`;
-    }
-  }
-
-  if (!description) description = "❌ No hay información de conductores.";
-
-  return new EmbedBuilder()
-    .setTitle("🚛 Drivers Online — Rotra Club®")
-    .setDescription(description)
-    .setColor(0x2ECC71)
-    .setTimestamp();
-}
-
-// Loop de actualización
-async function startStatusUpdater() {
-  try {
-    const channel = await client.channels.fetch(UPDATE_CHANNEL_ID);
-    if (!channel) return console.error("❌ Canal no encontrado");
-
-    const embed = await buildEmbed();
-    if (!statusMessage) {
-      statusMessage = await channel.send({ embeds: [embed] });
-    } else {
-      await statusMessage.edit({ embeds: [embed] });
-    }
-  } catch (err) {
-    console.error("❌ Error en el updater:", err);
-  }
-
-  setTimeout(startStatusUpdater, 20000); // cada 20 segundos
-}
-
-client.login(process.env.DISCORD_TOKEN); // ELIMINAR DE LA LINEA DE ABAJO POR SI NO FUNCIONA
-
-
-
+client.login(process.env.DISCORD_TOKEN);
 
 
 
