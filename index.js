@@ -198,7 +198,7 @@ client.on('interactionCreate', async interaction => {
 // =======================
 
 const VTC_ID = '81848'; // <-- pon aquí el ID numérico de tu VTC en TruckersMP
-const UPDATE_CHANNEL_ID = '1386870773867610173'; // Canal de Discord donde se publicará el embed
+const UPDATE_CHANNEL_ID = '1386870650500677642'; // Canal de Discord donde se publicará el embed
 let statusMessage = null;
 
 // Obtener miembros de la VTC
@@ -276,6 +276,7 @@ async function startStatusUpdater() {
 }
 
 client.login(process.env.DISCORD_TOKEN); // ELIMINAR DE LA LINEA DE ABAJO POR SI NO FUNCIONA
+
 
 
 
