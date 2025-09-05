@@ -1,7 +1,14 @@
 require('dotenv').config();
 const fs = require('fs');
 const axios = require('axios');
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { 
+  Client, 
+  GatewayIntentBits, 
+  REST, 
+  Routes, 
+  SlashCommandBuilder, 
+  EmbedBuilder 
+} = require('discord.js');
 
 const client = new Client({
   intents: [
@@ -13,15 +20,78 @@ const client = new Client({
 
 // IDs de usuarios y roles permitidos
 const allowedUsers = ['640315344916840478', '192746644939210763'];
-const allowedRoles = ['1411835087120629952', '1386877603130114098', '1386877176124674109']; // aquí pones IDs de roles
+const allowedRoles = ['1411835087120629952', '1386877603130114098', '1386877176124674109'];
 const lastEmbeds = new Map();
 
+// === CONFIG ONLINE DRIVERS ===
+const ONLINE_CHANNEL_ID = "1412219197802676355"; // canal #online-drivers
+const VTC_ID = "81848"; // ID de tu VTC en TruckersMP
+let onlineMessage; // mensaje fijo a editar
+
+// 🔎 Consulta a la API de TruckersMP
+async function fetchOnlineDrivers() {
+  try {
+    const url = `https://api.truckersmp.com/v2/vtc/${VTC_ID}/members/online`;
+    const response = await axios.get(url);
+    return response.data.response;
+  } catch (error) {
+    console.error("❌ Error obteniendo miembros online:", error);
+    return null;
+  }
+}
+
+// 🔄 Actualización del embed de online
+async function updateOnlineDrivers() {
+  try {
+    const channel = await client.channels.fetch(ONLINE_CHANNEL_ID);
+    const drivers = await fetchOnlineDrivers();
+    if (!drivers) return;
+
+    const embed = new EmbedBuilder()
+      .setTitle("🚛 Miembros Online Rotra Club ®")
+      .setColor(0x00af8f)
+      .setTimestamp();
+
+    if (drivers.length === 0) {
+      embed.setDescription("🚫 No hay miembros conectados en este momento.");
+    } else {
+      embed.setDescription(`Actualmente hay **${drivers.length}** miembros conectados.`);
+      drivers.forEach(driver => {
+        const mapUrl = `https://map.truckyapp.com/?user=${driver.id}`;
+        embed.addFields({
+          name: `ID: ${driver.id}`,
+          value: `Nick: **${driver.name}**\nJuego: ${driver.game}\nServidor: ${driver.server}\nCiudad: ${driver.location}\n[Follow in map](${mapUrl})`,
+          inline: false
+        });
+      });
+    }
+
+    if (!onlineMessage) {
+      onlineMessage = await channel.send({ embeds: [embed] });
+    } else {
+      await onlineMessage.edit({ embeds: [embed] });
+    }
+  } catch (error) {
+    console.error("❌ Error actualizando embed de online:", error);
+  }
+}
+
+// 🚀 Cuando el bot inicia
 client.once('ready', async () => {
   console.log(`✅ Bot conectado como ${client.user.tag}`);
   client.user.setActivity('Gestionando la VTC', { type: 3 });
+
+  // Registrar comandos
   await registerSlashCommands();
+
+  // Primer actualización de online drivers
+  await updateOnlineDrivers();
+
+  // Refrescar cada 5 minutos
+  setInterval(updateOnlineDrivers, 5 * 60 * 1000);
 });
 
+// === REGISTRO DE COMANDOS ===
 async function registerSlashCommands() {
   const commands = [
     new SlashCommandBuilder().setName('test').setDescription('Prueba el bot'),
@@ -57,6 +127,7 @@ async function registerSlashCommands() {
   }
 }
 
+// === FUNCIONES DE EMBEDS Y MENSAJES ===
 async function sendTeamUpdate(target, text, color = 0x3498DB) {
   const embed = {
     title: 'Rotra Club®',
@@ -68,6 +139,7 @@ async function sendTeamUpdate(target, text, color = 0x3498DB) {
   return message;
 }
 
+// === INTERACCIONES ===
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -76,15 +148,16 @@ client.on('interactionCreate', async interaction => {
   const subcommand = interaction.options.getSubcommand(false);
 
   try {
+    // permisos
     if (
-  !allowedUsers.includes(interaction.user.id) && // ni está en la lista de usuarios
-  !interaction.member.roles.cache.some(role => allowedRoles.includes(role.id)) // ni tiene un rol permitido
-) {
-  return await interaction.reply({
-    content: '❌ No tienes permiso para usar este comando.',
-    flags: 64
-  });
-}
+      !allowedUsers.includes(interaction.user.id) && 
+      !interaction.member.roles.cache.some(role => allowedRoles.includes(role.id))
+    ) {
+      return await interaction.reply({
+        content: '❌ No tienes permiso para usar este comando.',
+        flags: 64
+      });
+    }
 
     if (command === 'embed') {
       if (subcommand === 'create') {
@@ -171,9 +244,8 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (command !== 'embed' && !interaction.deferred && !interaction.replied) {
-  await interaction.reply({ content: '✅ Enviado.', flags: 64 });
-	}
-
+      await interaction.reply({ content: '✅ Enviado.', flags: 64 });
+    }
 
   } catch (error) {
     console.error('❌ Error al ejecutar comando:', error);
@@ -190,9 +262,3 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
-
-
-
-
-
-
