@@ -4,7 +4,7 @@ const axios = require('axios');
 const { 
   Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, 
   ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField,
-  StringSelectMenuBuilder
+  StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, InteractionType
 } = require('discord.js');
 
 const client = new Client({
@@ -19,6 +19,7 @@ const client = new Client({
 const allowedUsers = ['640315344916840478', '192746644939210763'];
 const allowedRoles = ['1411835087120629952', '1386877603130114098', '1386877176124674109']; 
 const lastEmbeds = new Map();
+const EVENT_FILE = './eventos.json'; // almacenamiento de eventos
 
 // ID de tu categoría de tickets
 const TICKET_CATEGORY = '1386871447980609697';
@@ -29,6 +30,7 @@ client.once('ready', async () => {
   await registerSlashCommands();
 });
 
+// --- Registro de slash commands ---
 async function registerSlashCommands() {
   const commands = [
     new SlashCommandBuilder().setName('test').setDescription('Prueba el bot'),
@@ -53,7 +55,10 @@ async function registerSlashCommands() {
       .addSubcommand(sub =>
         sub.setName('restore')
           .setDescription('Restaura el último embed enviado por el bot')
-      )
+      ),
+    new SlashCommandBuilder()
+      .setName('evento')
+      .setDescription('Crea un nuevo evento estilo convoy')
   ].map(cmd => cmd.toJSON());
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
@@ -65,36 +70,32 @@ async function registerSlashCommands() {
   }
 }
 
+// --- Función para enviar embeds genéricos ---
 async function sendTeamUpdate(target, text, color = 0x3498DB) {
-  const embed = {
-    title: 'Rotra Club®',
-    description: text,
-    color: color
-  };
+  const embed = { title: 'Rotra Club®', description: text, color: color };
   const message = await target.send({ embeds: [embed] });
   lastEmbeds.set(target.id, message);
   return message;
 }
 
+// --- Evento principal ---
 client.on('interactionCreate', async interaction => {
   const channel = interaction.channel;
-
   try {
     const guild = interaction.guild;
     const user = interaction.user;
 
     // --- BOTONES Y SELECT MENU ---
     if (interaction.isButton() || interaction.isStringSelectMenu()) {
-
-      // --- ABRIR TICKET (BOTÓN ANTIGUO) ---
+      // --- ABRIR TICKET (BOTÓN) ---
       if (interaction.isButton() && interaction.customId === 'open_ticket') {
-        await createTicket(interaction, user, guild, 'Soporte 🎫'); // tipo por defecto
+        await createTicket(interaction, user, guild, 'Soporte 🎫'); 
         return;
       }
 
       // --- ABRIR TICKET (SELECT MENU) ---
       if (interaction.isStringSelectMenu() && interaction.customId === 'open_ticket_select') {
-        const selected = interaction.values[0]; // opción elegida
+        const selected = interaction.values[0];
         let tipoTicket = 'Soporte 🎫';
         if (selected === 'ticket_convoy') tipoTicket = 'Convoy 🚚';
         if (selected === 'ticket_reclutamiento') tipoTicket = 'Reclutamiento 📝';
@@ -107,14 +108,28 @@ client.on('interactionCreate', async interaction => {
       // --- CERRAR TICKET ---
       if (interaction.isButton() && interaction.customId === 'close_ticket') {
         const member = interaction.member;
-
-        if (!allowedUsers.includes(member.id) &&
-            !member.roles.cache.some(r => allowedRoles.includes(r.id))) {
+        if (!allowedUsers.includes(member.id) && !member.roles.cache.some(r => allowedRoles.includes(r.id))) {
           return interaction.reply({ content: '❌ No tienes permiso para cerrar este ticket.', ephemeral: true });
         }
-
-        await interaction.channel.delete().catch(err => console.error('❌ Error al eliminar ticket:', err));
+        await interaction.channel.delete().catch(console.error);
         return;
+      }
+
+      // --- RSVP BOTONES DE EVENTO ---
+      if (interaction.isButton() && interaction.customId.startsWith('evento_rsvp_')) {
+        const eventoId = interaction.customId.split('_')[2];
+        const eventos = JSON.parse(fs.readFileSync(EVENT_FILE, 'utf8') || '{}');
+        const evento = eventos[eventoId];
+        if (!evento) return interaction.reply({ content: '❌ Evento no encontrado.', ephemeral: true });
+
+        if (!evento.asistentes) evento.asistentes = [];
+        if (!evento.asistentes.includes(user.id)) {
+          evento.asistentes.push(user.id);
+          fs.writeFileSync(EVENT_FILE, JSON.stringify(eventos, null, 2));
+          return interaction.reply({ content: '✅ Te has registrado como asistente.', ephemeral: true });
+        } else {
+          return interaction.reply({ content: '❌ Ya estás registrado.', ephemeral: true });
+        }
       }
     }
 
@@ -122,10 +137,8 @@ client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
     // Comprobar permisos
-    if (
-      !allowedUsers.includes(interaction.user.id) &&
-      !interaction.member.roles.cache.some(role => allowedRoles.includes(role.id))
-    ) {
+    if (!allowedUsers.includes(interaction.user.id) &&
+        !interaction.member.roles.cache.some(role => allowedRoles.includes(role.id))) {
       return interaction.reply({ content: '❌ No tienes permiso para usar este comando.', flags: 64 });
     }
 
@@ -141,26 +154,19 @@ client.on('interactionCreate', async interaction => {
           const url = `https://latamexpress-embed.onrender.com/api/embed/${code}`;
           const response = await axios.get(url);
           const embedData = response.data;
-
           if (typeof embedData.color === 'string' && embedData.color.startsWith('#')) {
             embedData.color = parseInt(embedData.color.replace('#', ''), 16);
           }
-
           const embed = new EmbedBuilder(embedData);
           const msg = await channel.send({ embeds: [embed] });
           lastEmbeds.set(channel.id, msg);
-
           return interaction.reply({ content: '✅ Embed enviado correctamente.', flags: 64 });
-        } catch (error) {
-          console.error('❌ Error al obtener el embed:', error);
+        } catch {
           return interaction.reply({ content: '❌ No se pudo obtener el embed.', flags: 64 });
         }
       } else if (subcommand === 'restore') {
         const last = lastEmbeds.get(channel.id);
-        if (!last || !last.embeds?.length) {
-          return interaction.reply({ content: '❌ No se encontró un embed reciente en este canal.', flags: 64 });
-        }
-
+        if (!last || !last.embeds?.length) return interaction.reply({ content: '❌ No se encontró un embed reciente.', flags: 64 });
         await channel.send({ embeds: last.embeds });
         return interaction.reply({ content: '✅ Embed restaurado correctamente.', flags: 64 });
       }
@@ -174,7 +180,7 @@ client.on('interactionCreate', async interaction => {
         break;
       case 'training':
         await sendTeamUpdate(channel, `• **${name}** se unió como **Trial Driver** de Rotra Club ®. 🚚`, 0x2ECC71);
-        break;	    
+        break;
       case 'join':
         await sendTeamUpdate(channel, `• **${name}** se unió como **Driver** de Rotra Club ®. 🚚`, 0x2ECC71);
         break;
@@ -196,64 +202,151 @@ client.on('interactionCreate', async interaction => {
       case 'ban':
         await sendTeamUpdate(channel, `• **${name}** ha sido **baneado** de Rotra Club ®. 🚫`, 0xC0392B);
         break;
-      case 'externo':
-        await interaction.deferReply({ flags: 64 });
-        try {
-          const data = fs.readFileSync('./embeds/externo.json', 'utf8');
-          const json = JSON.parse(data);
-          const options = {};
-          if (json.content) options.content = json.content;
-          if (Array.isArray(json.embeds)) options.embeds = json.embeds;
-          if (Array.isArray(json.components)) options.components = json.components;
-          if (typeof json.tts === 'boolean') options.tts = json.tts;
-          const msg = await channel.send(options);
-          lastEmbeds.set(channel.id, msg);
-          await interaction.editReply({ content: '✅ Enviado.' });
-        } catch (error) {
-          console.error('❌ Error al leer externo.json:', error);
-          await interaction.editReply({ content: '❌ Error al enviar el embed externo.' });
-        }
-        break;
-      case 'ticket':
-        // Embed con menú select
-        const ticketEmbed = new EmbedBuilder()
-          .setTitle('🎫 Rotra Club® - Soporte')
-          .setDescription('Si necesitas ayuda o soporte, selecciona el tipo de ticket en el menú de abajo.\nUn miembro del staff se pondrá en contacto contigo.')
-          .setColor(0x1F8B4C)
-          .setFooter({ text: 'Rotra Club® - Soporte VTC' });
 
-        const ticketRow = new ActionRowBuilder().addComponents(
-          new StringSelectMenuBuilder()
-            .setCustomId('open_ticket_select')
-            .setPlaceholder('Selecciona el tipo de ticket')
-            .addOptions([
-              { 
-                label: 'Invitación a Convoy', 
-                value: 'ticket_convoy', 
-                description: 'Invítanos a tu convoy',
-                emoji: { id: '1420878930197479437' } // Aquí va el ID del emoji
-              },
-              { 
-                label: 'Reclutamiento', 
-                value: 'ticket_reclutamiento', 
-                description: 'Quieres ser parte del VTC?',
-                emoji: { id: '1420878693496000562' } 
-              },
-              { 
-                label: 'Soporte', 
-                value: 'ticket_soporte', 
-                description: 'Crea un ticket de soporte',
-                emoji: { id: '1420878756926722230' } 
-              },
-            ])
+      // --- COMANDO DE EVENTO NUEVO ---
+      case 'evento':
+        // Crear modal para rellenar información del evento
+        const modal = new ModalBuilder()
+          .setCustomId('evento_modal')
+          .setTitle('Crear Nuevo Evento');
+
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('titulo')
+              .setLabel('Título del Evento')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('descripcion')
+              .setLabel('Descripción')
+              .setStyle(TextInputStyle.Paragraph)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('juego')
+              .setLabel('Juego')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('server')
+              .setLabel('Server')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('dlc')
+              .setLabel('DLC')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('salida')
+              .setLabel('Salida')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('llegada')
+              .setLabel('Llegada')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('camion')
+              .setLabel('Camión')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('trailer')
+              .setLabel('Tráiler')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('carga')
+              .setLabel('Carga')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('evento_url')
+              .setLabel('URL del Evento TruckersMP')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(false)
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+              .setCustomId('hora')
+              .setLabel('Hora del Evento (formato Chile)')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          )
         );
 
-        await channel.send({ embeds: [ticketEmbed], components: [ticketRow] });
-        await interaction.reply({ content: '✅ Mensaje de ticket enviado.', ephemeral: true });
+        await interaction.showModal(modal);
         break;
     }
 
-    if (command !== 'embed' && !interaction.deferred && !interaction.replied) {
+    // --- RESPUESTA DE MODAL PARA EVENTO ---
+    if (interaction.type === InteractionType.ModalSubmit && interaction.customId === 'evento_modal') {
+      const values = {};
+      interaction.fields.fields.forEach((field, key) => {
+        values[key] = field.value;
+      });
+
+      // Guardar evento en JSON
+      const eventos = JSON.parse(fs.existsSync(EVENT_FILE) ? fs.readFileSync(EVENT_FILE, 'utf8') : '{}');
+      const eventoId = Date.now().toString();
+      eventos[eventoId] = { ...values, asistentes: [] };
+      fs.writeFileSync(EVENT_FILE, JSON.stringify(eventos, null, 2));
+
+      // Crear embed
+      const embed = new EmbedBuilder()
+        .setTitle(values.titulo)
+        .setDescription(values.descripcion)
+        .addFields(
+          { name: '🎮 Juego', value: values.juego, inline: true },
+          { name: '🌎 Server', value: values.server, inline: true },
+          { name: '💿 DLC', value: values.dlc, inline: true },
+          { name: '🚛 Salida', value: values.salida, inline: true },
+          { name: '🛑 Llegada', value: values.llegada, inline: true },
+          { name: '🚚 Camión', value: values.camion, inline: true },
+          { name: '🏗️ Tráiler', value: values.trailer, inline: true },
+          { name: '📦 Carga', value: values.carga, inline: true },
+          { name: '📎 Evento TruckersMP', value: values.evento_url || 'No disponible', inline: true },
+          { name: '⏰ Hora', value: values.hora, inline: true },
+          { name: '☑️ Asistentes', value: '0', inline: true }
+        )
+        .setColor(0x1F8B4C)
+        .setFooter({ text: `Creado por ${interaction.user.tag}` });
+
+      // Botón RSVP
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`evento_rsvp_${eventoId}`)
+          .setLabel('Asistir ✅')
+          .setStyle(ButtonStyle.Primary)
+      );
+
+      await channel.send({ embeds: [embed], components: [row] });
+      await interaction.reply({ content: '✅ Evento creado correctamente.', ephemeral: true });
+    }
+
+    if (command !== 'embed' && command !== 'evento' && !interaction.deferred && !interaction.replied) {
       await interaction.reply({ content: '✅ Enviado.', flags: 64 });
     }
 
@@ -271,19 +364,14 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-// --- FUNCIÓN PARA CREAR TICKET (ahora recibe tipoTicket) ---
+// --- FUNCIÓN PARA CREAR TICKET (sin cambios) ---
 async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫') {
-  // Limpiar nombre de usuario para el canal
   let username = user.username.toLowerCase().replace(/[^a-z0-9]/g, '-');
   if (username.length > 20) username = username.slice(0, 20);
 
-  // Evitar tickets duplicados
   const existing = guild.channels.cache.find(c => c.name === `ticket-${username}`);
-  if (existing) {
-    return interaction.reply({ content: `❌ Ya tienes un ticket abierto: ${existing}`, ephemeral: true });
-  }
+  if (existing) return interaction.reply({ content: `❌ Ya tienes un ticket abierto: ${existing}`, ephemeral: true });
 
-  // Crear canal
   const ticketChannel = await guild.channels.create({
     name: `ticket-${username}`,
     type: ChannelType.GuildText,
@@ -298,15 +386,10 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
     ],
   });
 
-  // Botón de cerrar ticket
   const closeRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('close_ticket')
-      .setLabel('Cerrar Ticket 🔒')
-      .setStyle(ButtonStyle.Danger)
+    new ButtonBuilder().setCustomId('close_ticket').setLabel('Cerrar Ticket 🔒').setStyle(ButtonStyle.Danger)
   );
 
-  // Embed de bienvenida
   const embed = new EmbedBuilder()
     .setTitle(`🎫 Ticket de ${tipoTicket} - Rotra Club®`)
     .setDescription(`Hola ${user}, un miembro del staff se pondrá en contacto contigo a la brevedad.`)
