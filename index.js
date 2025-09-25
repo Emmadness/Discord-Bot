@@ -83,18 +83,24 @@ client.on('interactionCreate', async interaction => {
     const guild = interaction.guild;
     const user = interaction.user;
 
-    // --- BOTONES ---
+    // --- BOTONES Y SELECT MENU ---
     if (interaction.isButton() || interaction.isStringSelectMenu()) {
 
       // --- ABRIR TICKET (BOTÓN ANTIGUO) ---
       if (interaction.isButton() && interaction.customId === 'open_ticket') {
-        await createTicket(interaction, user, guild);
+        await createTicket(interaction, user, guild, 'Soporte 🎫'); // tipo por defecto
         return;
       }
 
       // --- ABRIR TICKET (SELECT MENU) ---
       if (interaction.isStringSelectMenu() && interaction.customId === 'open_ticket_select') {
-        await createTicket(interaction, user, guild);
+        const selected = interaction.values[0]; // opción elegida
+        let tipoTicket = 'Soporte 🎫';
+        if (selected === 'ticket_convoy') tipoTicket = 'Convoy 🚚';
+        if (selected === 'ticket_reclutamiento') tipoTicket = 'Reclutamiento 📝';
+        if (selected === 'ticket_soporte') tipoTicket = 'Soporte 🎫';
+
+        await createTicket(interaction, user, guild, tipoTicket);
         return;
       }
 
@@ -221,25 +227,25 @@ client.on('interactionCreate', async interaction => {
             .setCustomId('open_ticket_select')
             .setPlaceholder('Selecciona el tipo de ticket')
             .addOptions([
-  { 
-    label: 'Invitación a Convoy', 
-    value: 'ticket_convoy', 
-    description: 'Invítanos a tu convoy',
-    emoji: { id: '1420878930197479437' } // Aquí va el ID del emoji
-  },
-  { 
-    label: 'Reclutamiento', 
-    value: 'ticket_reclutamiento', 
-    description: 'Quieres ser parte del VTC?',
-    emoji: { id: '1420878693496000562' } 
-  },
-  { 
-    label: 'Soporte', 
-    value: 'ticket_soporte', 
-    description: 'Crea un ticket de soporte',
-    emoji: { id: '1420878756926722230' } 
-  },
-])
+              { 
+                label: 'Invitación a Convoy', 
+                value: 'ticket_convoy', 
+                description: 'Invítanos a tu convoy',
+                emoji: { id: '1420878930197479437' } // Aquí va el ID del emoji
+              },
+              { 
+                label: 'Reclutamiento', 
+                value: 'ticket_reclutamiento', 
+                description: 'Quieres ser parte del VTC?',
+                emoji: { id: '1420878693496000562' } 
+              },
+              { 
+                label: 'Soporte', 
+                value: 'ticket_soporte', 
+                description: 'Crea un ticket de soporte',
+                emoji: { id: '1420878756926722230' } 
+              },
+            ])
         );
 
         await channel.send({ embeds: [ticketEmbed], components: [ticketRow] });
@@ -265,8 +271,8 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-// --- FUNCIÓN PARA CREAR TICKET ---
-async function createTicket(interaction, user, guild) {
+// --- FUNCIÓN PARA CREAR TICKET (ahora recibe tipoTicket) ---
+async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫') {
   // Limpiar nombre de usuario para el canal
   let username = user.username.toLowerCase().replace(/[^a-z0-9]/g, '-');
   if (username.length > 20) username = username.slice(0, 20);
@@ -302,20 +308,18 @@ async function createTicket(interaction, user, guild) {
 
   // Embed de bienvenida
   const embed = new EmbedBuilder()
-    .setTitle(`🎫 Ticket de Soporte - Rotra Club®`)
+    .setTitle(`🎫 Ticket de ${tipoTicket} - Rotra Club®`)
     .setDescription(`Hola ${user}, un miembro del staff se pondrá en contacto contigo a la brevedad.`)
     .setColor(0x1F8B4C)
     .addFields(
       { name: 'Usuario', value: `${user.tag}`, inline: true },
+      { name: 'Tipo de Ticket', value: `${tipoTicket}`, inline: true },
       { name: 'Fecha de apertura', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
     )
     .setFooter({ text: 'Rotra Club® - Soporte VTC', iconURL: user.displayAvatarURL() });
 
   await ticketChannel.send({ embeds: [embed], components: [closeRow] });
-  return interaction.reply({ content: `✅ Tu ticket ha sido creado: ${ticketChannel}`, ephemeral: true });
+  return interaction.reply({ content: `✅ Tu ticket de ${tipoTicket} ha sido creado: ${ticketChannel}`, ephemeral: true });
 }
 
 client.login(process.env.DISCORD_TOKEN);
-
-
-
