@@ -87,20 +87,24 @@ client.on('interactionCreate', async interaction => {
       // --- ABRIR TICKET ---
       if (interaction.customId === 'open_ticket') {
 
+        // Limpiar nombre de usuario para el canal
+        let username = user.username.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        if (username.length > 20) username = username.slice(0, 20);
+
         // Evitar tickets duplicados
-        const existing = guild.channels.cache.find(c => c.name === `ticket-${user.id}`);
+        const existing = guild.channels.cache.find(c => c.name === `ticket-${username}`);
         if (existing) {
           return interaction.reply({ content: `❌ Ya tienes un ticket abierto: ${existing}`, ephemeral: true });
         }
 
         // Crear canal
         const ticketChannel = await guild.channels.create({
-          name: `ticket-${user.id}`,
+          name: `ticket-${username}`,
           type: ChannelType.GuildText,
           parent: TICKET_CATEGORY,
           permissionOverwrites: [
-            { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }, // público no ve
-            { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }, // usuario ve y escribe
+            { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+            { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
             ...allowedRoles.map(roleId => ({
               id: roleId,
               allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
@@ -116,11 +120,16 @@ client.on('interactionCreate', async interaction => {
             .setStyle(ButtonStyle.Danger)
         );
 
-        // Embed de bienvenida
+        // Embed de bienvenida mejorado
         const embed = new EmbedBuilder()
-          .setTitle('🎫 Rotra Club® - Ticket')
-          .setDescription(`Hola ${user}, un staff se pondrá en contacto contigo pronto.`)
-          .setColor(0x3498DB);
+          .setTitle(`🎫 Ticket de Soporte - Rotra Club®`)
+          .setDescription(`Hola ${user}, un miembro del staff se pondrá en contacto contigo a la brevedad.`)
+          .setColor(0x1F8B4C)
+          .addFields(
+            { name: 'Usuario', value: `${user.tag}`, inline: true },
+            { name: 'Fecha de apertura', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+          )
+          .setFooter({ text: 'Rotra Club® - Soporte VTC', iconURL: user.displayAvatarURL() });
 
         await ticketChannel.send({ embeds: [embed], components: [closeRow] });
         return interaction.reply({ content: `✅ Tu ticket ha sido creado: ${ticketChannel}`, ephemeral: true });
@@ -135,7 +144,7 @@ client.on('interactionCreate', async interaction => {
           return interaction.reply({ content: '❌ No tienes permiso para cerrar este ticket.', ephemeral: true });
         }
 
-        await channel.delete().catch(err => console.error('❌ Error al eliminar ticket:', err));
+        await interaction.channel.delete().catch(err => console.error('❌ Error al eliminar ticket:', err));
       }
       return;
     }
@@ -237,11 +246,11 @@ client.on('interactionCreate', async interaction => {
         }
         break;
       case 'ticket':
-        // Embed estilo Rotra Club®
+        // Embed mejorado para mensaje inicial de tickets
         const ticketEmbed = new EmbedBuilder()
           .setTitle('🎫 Rotra Club® - Soporte')
           .setDescription('Si necesitas ayuda o soporte, presiona el botón de abajo para abrir un ticket privado.\nUn miembro del staff se pondrá en contacto contigo.')
-          .setColor(0x3498DB)
+          .setColor(0x1F8B4C)
           .setFooter({ text: 'Rotra Club® - Soporte VTC' });
 
         const ticketRow = new ActionRowBuilder().addComponents(
