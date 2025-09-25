@@ -74,6 +74,65 @@ async function registerSlashCommands() {
     console.error('❌ Error al registrar comandos:', error);
   }
 }
+const { EmbedBuilder } = require('discord.js');
+
+// Roles específicos que quieres monitorear
+const trackedRoles = [
+  '1386877603130114098', // Human Resources
+  '1386877176124674109', // Media Support
+  '1386874357191544974', // Roтra Clυв ® (Conductor)
+  '1389078801232953375'  // Trial Driver
+];
+
+// Canal donde se enviarán los logs
+const logChannelId = '1386870558939025489'; // <- pon aquí el canal donde quieres los mensajes
+
+// Cuando un usuario cambia de roles
+client.on('guildMemberUpdate', async (oldMember, newMember) => {
+  const logChannel = newMember.guild.channels.cache.get(logChannelId);
+  if (!logChannel) return;
+
+  // Roles añadidos (solo si están en trackedRoles)
+  const addedRoles = newMember.roles.cache.filter(
+    r => !oldMember.roles.cache.has(r.id) && trackedRoles.includes(r.id)
+  );
+  for (const role of addedRoles.values()) {
+    const embed = new EmbedBuilder()
+      .setTitle('📈 Rol asignado')
+      .setDescription(`${newMember} recibió el rol **${role.name}**`)
+      .setColor(0x2ECC71)
+      .setThumbnail(newMember.user.displayAvatarURL());
+    logChannel.send({ embeds: [embed] });
+  }
+
+  // Roles eliminados (solo si están en trackedRoles)
+  const removedRoles = oldMember.roles.cache.filter(
+    r => !newMember.roles.cache.has(r.id) && trackedRoles.includes(r.id)
+  );
+  for (const role of removedRoles.values()) {
+    const embed = new EmbedBuilder()
+      .setTitle('📉 Rol removido')
+      .setDescription(`${newMember} perdió el rol **${role.name}**`)
+      .setColor(0xE74C3C)
+      .setThumbnail(newMember.user.displayAvatarURL());
+    logChannel.send({ embeds: [embed] });
+  }
+});
+
+// Cuando alguien abandona el servidor
+client.on('guildMemberRemove', async member => {
+  const logChannel = member.guild.channels.cache.get(logChannelId);
+  if (!logChannel) return;
+
+  const embed = new EmbedBuilder()
+    .setTitle('🚪 Miembro salió del servidor')
+    .setDescription(`${member.user.tag} ha abandonado el servidor.`)
+    .setColor(0x95A5A6)
+    .setThumbnail(member.user.displayAvatarURL())
+    .setFooter({ text: `ID: ${member.id}` });
+
+  logChannel.send({ embeds: [embed] });
+});
 
 // Sistema de tickets
 async function setupTicketSystem(channel) {
@@ -130,7 +189,7 @@ client.on('interactionCreate', async interaction => {
       }
 
       const ticketChannel = await interaction.guild.channels.create({
-        name: `ticket-${interaction.user.username}`,
+        name: `ticket-${interaction.user.username.replace(/[^a-zA-Z0-9]/g, '-')}`,
         type: ChannelType.GuildText,
         permissionOverwrites: [
           {
@@ -171,4 +230,5 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
 
