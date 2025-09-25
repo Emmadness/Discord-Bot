@@ -92,84 +92,137 @@ async function setupTicketSystem(channel) {
   await channel.send({ embeds: [embed], components: [button] });
 }
 
+// Manejo de interacciones
 client.on('interactionCreate', async interaction => {
-  if (interaction.isChatInputCommand()) {
-    const channel = interaction.channel;
-    const command = interaction.commandName;
-    const subcommand = interaction.options.getSubcommand(false);
+  try {
+    // Comandos Slash
+    if (interaction.isChatInputCommand()) {
+      const command = interaction.commandName;
 
-    try {
+      // Comprobar permisos
       if (
         !allowedUsers.includes(interaction.user.id) && 
         !interaction.member.roles.cache.some(role => allowedRoles.includes(role.id))
       ) {
         return await interaction.reply({
           content: '❌ No tienes permiso para usar este comando.',
-          flags: 64
+          ephemeral: true
         });
       }
 
-      if (command === 'ticket-setup') {
-        await setupTicketSystem(channel);
-        return await interaction.reply({ content: '✅ Sistema de tickets enviado en este canal.', flags: 64 });
+      switch(command) {
+        case 'test':
+          await interaction.reply({ content: '✅ Bot funcionando correctamente.', ephemeral: true });
+          break;
+
+        case 'training':
+        case 'join':
+        case 'media':
+        case 'hr':
+        case 'admin':
+        case 'staff':
+        case 'leave':
+        case 'ban':
+          {
+            const nombre = interaction.options.getString('nombre');
+            await interaction.reply({ content: `✅ Comando \`${command}\` ejecutado para ${nombre}.`, ephemeral: true });
+          }
+          break;
+
+        case 'externo':
+          {
+            const embed = new EmbedBuilder()
+              .setTitle('Mensaje Externo')
+              .setDescription('Este es un mensaje externo del bot.')
+              .setColor(0xE67E22);
+            await interaction.reply({ embeds: [embed], ephemeral: false });
+          }
+          break;
+
+        case 'embed':
+          {
+            const sub = interaction.options.getSubcommand();
+            if(sub === 'create') {
+              const codigo = interaction.options.getString('codigo');
+              let embed;
+              try {
+                embed = JSON.parse(codigo);
+              } catch(e) {
+                return interaction.reply({ content: '❌ Código de embed inválido.', ephemeral: true });
+              }
+
+              await interaction.channel.send({ embeds: [EmbedBuilder.from(embed)] });
+              lastEmbeds.set(interaction.channel.id, EmbedBuilder.from(embed));
+              await interaction.reply({ content: '✅ Embed enviado.', ephemeral: true });
+            } else if(sub === 'restore') {
+              const embed = lastEmbeds.get(interaction.channel.id);
+              if(!embed) return interaction.reply({ content: '❌ No hay embeds para restaurar.', ephemeral: true });
+              await interaction.channel.send({ embeds: [embed] });
+              await interaction.reply({ content: '✅ Embed restaurado.', ephemeral: true });
+            }
+          }
+          break;
+
+        case 'ticket-setup':
+          await setupTicketSystem(interaction.channel);
+          await interaction.reply({ content: '✅ Sistema de tickets enviado en este canal.', ephemeral: true });
+          break;
+
+        default:
+          await interaction.reply({ content: '❌ Comando no reconocido.', ephemeral: true });
+      }
+    }
+
+    // Botones del sistema de tickets
+    if(interaction.isButton()) {
+      if(interaction.customId === 'create_ticket') {
+        const existing = interaction.guild.channels.cache.find(c => c.name === `ticket-${interaction.user.id}`);
+        if (existing) return interaction.reply({ content: '❌ Ya tienes un ticket abierto.', ephemeral: true });
+
+        const ticketChannel = await interaction.guild.channels.create({
+          name: `ticket-${interaction.user.username}`,
+          type: ChannelType.GuildText,
+          permissionOverwrites: [
+            { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+            { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+            ...staffRoles.map(roleId => ({
+              id: roleId,
+              allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+            }))
+          ]
+        });
+
+        const ticketEmbed = new EmbedBuilder()
+          .setTitle('🎫 Ticket de Soporte')
+          .setDescription(`Hola ${interaction.user}, el staff te atenderá en breve.`)
+          .setColor(0x2ECC71);
+
+        const closeButton = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('close_ticket')
+            .setLabel('🔒 Cerrar Ticket')
+            .setStyle(ButtonStyle.Danger)
+        );
+
+        await ticketChannel.send({ embeds: [ticketEmbed], components: [closeButton] });
+        await interaction.reply({ content: `✅ Ticket creado: ${ticketChannel}`, ephemeral: true });
       }
 
-      // aquí siguen tus comandos de embed y demás...
-      // (todo lo que ya tenías se queda igual)
-    } catch (error) {
-      console.error('❌ Error al ejecutar comando:', error);
-    }
-  }
+      if(interaction.customId === 'close_ticket') {
+        const member = interaction.member;
+        const hasPermission = staffRoles.some(roleId => member.roles.cache.has(roleId));
 
-  // Botones del sistema de tickets
-  if (interaction.isButton()) {
-  if (interaction.customId === 'create_ticket') {
-    const existing = interaction.guild.channels.cache.find(c => c.name === `ticket-${interaction.user.id}`);
-    if (existing) return interaction.reply({ content: '❌ Ya tienes un ticket abierto.', ephemeral: true });
+        if (!hasPermission) {
+          return interaction.reply({ content: '❌ No tienes permiso para cerrar este ticket.', ephemeral: true });
+        }
 
-    const ticketChannel = await interaction.guild.channels.create({
-      name: `ticket-${interaction.user.username}`,
-      type: ChannelType.GuildText,
-      permissionOverwrites: [
-        { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-        { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-        ...staffRoles.map(roleId => ({
-          id: roleId,
-          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
-        }))
-      ]
-    });
-
-    const ticketEmbed = new EmbedBuilder()
-      .setTitle('🎫 Ticket de Soporte')
-      .setDescription(`Hola ${interaction.user}, el staff te atenderá en breve.`)
-      .setColor(0x2ECC71);
-
-    // Botón habilitado
-    const closeButton = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('close_ticket')
-        .setLabel('🔒 Cerrar Ticket')
-        .setStyle(ButtonStyle.Danger)
-    );
-
-    await ticketChannel.send({ embeds: [ticketEmbed], components: [closeButton] });
-    await interaction.reply({ content: `✅ Ticket creado: ${ticketChannel}`, ephemeral: true });
-  }
-
-  if (interaction.customId === 'close_ticket') {
-    const member = interaction.member;
-    const hasPermission = staffRoles.some(roleId => member.roles.cache.has(roleId));
-
-    if (!hasPermission) {
-      return interaction.reply({ content: '❌ No tienes permiso para cerrar este ticket.', ephemeral: true });
+        await interaction.channel.delete().catch(() => {});
+      }
     }
 
-    await interaction.channel.delete().catch(() => {});
+  } catch(error) {
+    console.error('❌ Error al manejar la interacción:', error);
   }
-}
 });
 
 client.login(process.env.DISCORD_TOKEN);
-
-
