@@ -1,7 +1,10 @@
 require('dotenv').config();
 const fs = require('fs');
 const axios = require('axios');
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { 
+  Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, 
+  ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField 
+} = require('discord.js');
 
 const client = new Client({
   intents: [
@@ -13,8 +16,11 @@ const client = new Client({
 
 // IDs de usuarios y roles permitidos
 const allowedUsers = ['640315344916840478', '192746644939210763'];
-const allowedRoles = ['1411835087120629952', '1386877603130114098', '1386877176124674109']; // aquí pones IDs de roles
+const allowedRoles = ['1411835087120629952', '1386877603130114098', '1386877176124674109']; 
 const lastEmbeds = new Map();
+
+// ID de tu categoría de tickets
+const TICKET_CATEGORY = 'ID_DE_CATEGORIA_TICKETS';
 
 client.once('ready', async () => {
   console.log(`✅ Bot conectado como ${client.user.tag}`);
@@ -34,6 +40,7 @@ async function registerSlashCommands() {
     new SlashCommandBuilder().setName('leave').setDescription('Abandona la VTC').addStringOption(opt => opt.setName('nombre').setDescription('Nombre del usuario').setRequired(true)),
     new SlashCommandBuilder().setName('ban').setDescription('Usuario baneado de la VTC').addStringOption(opt => opt.setName('nombre').setDescription('Nombre del usuario').setRequired(true)),
     new SlashCommandBuilder().setName('externo').setDescription('Envía el mensaje del embed externo'),
+    new SlashCommandBuilder().setName('ticket').setDescription('Envía mensaje para abrir tickets'),
     new SlashCommandBuilder()
       .setName('embed')
       .setDescription('Opciones para enviar o recuperar un embed')
@@ -68,24 +75,89 @@ async function sendTeamUpdate(target, text, color = 0x3498DB) {
   return message;
 }
 
+// --- INTERACTION CREATE ÚNICO ---
 client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-
   const channel = interaction.channel;
-  const command = interaction.commandName;
-  const subcommand = interaction.options.getSubcommand(false);
 
   try {
-    if (
-  !allowedUsers.includes(interaction.user.id) && // ni está en la lista de usuarios
-  !interaction.member.roles.cache.some(role => allowedRoles.includes(role.id)) // ni tiene un rol permitido
-) {
-  return await interaction.reply({
-    content: '❌ No tienes permiso para usar este comando.',
-    flags: 64
-  });
-}
+    // --- BOTONES ---
+    if (interaction.isButton()) {
+      const guild = interaction.guild;
 
+      // ABRIR TICKET
+      if (interaction.customId === 'open_ticket') {
+        const user = interaction.user;
+
+        // Evitar que un usuario abra más de un ticket
+        const existing = guild.channels.cache.find(
+          c => c.name === `ticket-${user.username.toLowerCase()}`
+        );
+        if (existing) {
+          return interaction.reply({ content: `❌ Ya tienes un ticket abierto: ${existing}`, ephemeral: true });
+        }
+
+        const ticketChannel = await guild.channels.create({
+          name: `ticket-${user.username}`,
+          type: ChannelType.GuildText,
+          parent: TICKET_CATEGORY,
+          permissionOverwrites: [
+            { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+            { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+            ...allowedRoles.map(roleId => ({
+              id: roleId,
+              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
+            })),
+          ],
+        });
+
+        const closeRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('close_ticket')
+            .setLabel('Cerrar Ticket 🔒')
+            .setStyle(ButtonStyle.Danger)
+        );
+
+        const embed = new EmbedBuilder()
+          .setTitle('Rotra Club® - Ticket')
+          .setDescription(`Hola ${user}, un staff se pondrá en contacto contigo pronto.`)
+          .setColor(0x3498DB);
+
+        await ticketChannel.send({ embeds: [embed], components: [closeRow] });
+        return interaction.reply({ content: `✅ Tu ticket ha sido creado: ${ticketChannel}`, ephemeral: true });
+      }
+
+      // CERRAR TICKET
+      if (interaction.customId === 'close_ticket') {
+        const member = interaction.member;
+
+        if (
+          !allowedUsers.includes(member.id) &&
+          !member.roles.cache.some(r => allowedRoles.includes(r.id))
+        ) {
+          return interaction.reply({ content: '❌ No tienes permiso para cerrar este ticket.', ephemeral: true });
+        }
+
+        return channel.delete().catch(err => console.error('❌ Error al eliminar ticket:', err));
+      }
+      return; // Salimos del botón
+    }
+
+    // --- COMANDOS ---
+    if (!interaction.isChatInputCommand()) return;
+
+    // Comprobar permisos como antes
+    if (
+      !allowedUsers.includes(interaction.user.id) &&
+      !interaction.member.roles.cache.some(role => allowedRoles.includes(role.id))
+    ) {
+      return interaction.reply({ content: '❌ No tienes permiso para usar este comando.', flags: 64 });
+    }
+
+    const command = interaction.commandName;
+    const subcommand = interaction.options.getSubcommand(false);
+    const name = interaction.options.getString('nombre');
+
+    // --- EMBEDS ---
     if (command === 'embed') {
       if (subcommand === 'create') {
         const code = interaction.options.getString('codigo');
@@ -99,29 +171,27 @@ client.on('interactionCreate', async interaction => {
           }
 
           const embed = new EmbedBuilder(embedData);
-          const msg = await interaction.channel.send({ embeds: [embed] });
+          const msg = await channel.send({ embeds: [embed] });
           lastEmbeds.set(channel.id, msg);
 
-          return await interaction.reply({ content: '✅ Embed enviado correctamente.', flags: 64 });
+          return interaction.reply({ content: '✅ Embed enviado correctamente.', flags: 64 });
         } catch (error) {
           console.error('❌ Error al obtener el embed:', error);
-          return await interaction.reply({ content: '❌ No se pudo obtener el embed.', flags: 64 });
+          return interaction.reply({ content: '❌ No se pudo obtener el embed.', flags: 64 });
         }
       } else if (subcommand === 'restore') {
         const last = lastEmbeds.get(channel.id);
         if (!last || !last.embeds?.length) {
-          return await interaction.reply({ content: '❌ No se encontró un embed reciente en este canal.', flags: 64 });
+          return interaction.reply({ content: '❌ No se encontró un embed reciente en este canal.', flags: 64 });
         }
 
         await channel.send({ embeds: last.embeds });
-        return await interaction.reply({ content: '✅ Embed restaurado correctamente.', flags: 64 });
+        return interaction.reply({ content: '✅ Embed restaurado correctamente.', flags: 64 });
       }
-
       return;
     }
 
-    const name = interaction.options.getString('nombre');
-
+    // --- COMANDOS DE VTC ---
     switch (command) {
       case 'test':
         await sendTeamUpdate(channel, 'Ejemplo: Un nuevo miembro se unió al equipo 🎉');
@@ -168,12 +238,22 @@ client.on('interactionCreate', async interaction => {
           await interaction.editReply({ content: '❌ Error al enviar el embed externo.' });
         }
         break;
+      case 'ticket':
+        // Comando para enviar mensaje de ticket con botón
+        const ticketRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('open_ticket')
+            .setLabel('Abrir Ticket 🎫')
+            .setStyle(ButtonStyle.Primary)
+        );
+        await channel.send({ content: '🎫 Haz click para abrir un ticket privado.', components: [ticketRow] });
+        await interaction.reply({ content: '✅ Mensaje de ticket enviado.', ephemeral: true });
+        break;
     }
 
     if (command !== 'embed' && !interaction.deferred && !interaction.replied) {
-  await interaction.reply({ content: '✅ Enviado.', flags: 64 });
-	}
-
+      await interaction.reply({ content: '✅ Enviado.', flags: 64 });
+    }
 
   } catch (error) {
     console.error('❌ Error al ejecutar comando:', error);
@@ -190,8 +270,3 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
-
-
-
-
-
