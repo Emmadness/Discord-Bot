@@ -27,6 +27,7 @@ client.once('ready', async () => {
   console.log(`✅ Bot conectado como ${client.user.tag}`);
   client.user.setActivity('Gestionando la VTC', { type: 3 });
   await registerSlashCommands();
+  await registerEventCommand();
 });
 
 async function registerSlashCommands() {
@@ -65,6 +66,69 @@ async function registerSlashCommands() {
   }
 }
 
+// --- NUEVO COMANDO /event ---
+async function registerEventCommand() {
+  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+
+  const eventCommand = new SlashCommandBuilder()
+    .setName('event')
+    .setDescription('Crea un evento tipo convoy')
+    .addStringOption(opt => opt.setName('title').setDescription('Título del evento').setRequired(true))
+    .addStringOption(opt => opt.setName('start').setDescription('Lugar de salida'))
+    .addStringOption(opt => opt.setName('end').setDescription('Lugar de llegada'))
+    .addStringOption(opt => opt.setName('time').setDescription('Fecha y hora del evento'))
+    .addStringOption(opt => opt.setName('link').setDescription('Link del evento en TruckersMP'));
+
+  try {
+    await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), { body: [eventCommand.toJSON()] });
+    console.log('✅ Comando /event registrado correctamente.');
+  } catch (err) {
+    console.error('❌ Error al registrar comando /event:', err);
+  }
+}
+
+// --- FUNCION PARA CREAR EMBED DE EVENTO ---
+function createEventEmbed(event) {
+  const embed = new EmbedBuilder()
+    .setTitle(`🚨 ${event.title || 'Evento VTC'}`)
+    .setDescription(
+      `🚨 **Reglitas pa' que no te echen del server (ni del grupo 👀):**\n` +
+      `• Obedece al Staff o al Big Boss.\n` +
+      `• Apaga las balizas, pon consumo realista y lluvia OFF.\n` +
+      `• Marca tu rutita y carga el tanque 🛢️.\n` +
+      `• Si no encontrás la carga, crea o clona una.\n`
+    )
+    .addFields(
+      { name: '🛣️ Datos del Convoy™', value: 'Esto es lo "serio":', inline: false },
+      { name: '🎮 Juego', value: event.game || 'Euro Truck Simulator 2', inline: true },
+      { name: '🌎 Server', value: event.server || 'Event Server', inline: true },
+      { name: '💿 DLC', value: event.dlc || 'Sin DLC', inline: true },
+      { name: '🚛 Salida', value: event.start || 'Hamburg LKW - SLOT 7', inline: true },
+      { name: '🛑 Llegada', value: event.end || 'Innsbruck', inline: true },
+      { name: '🚚 Camión', value: event.truck || 'El que quieras', inline: true },
+      { name: '🏗️ Tráiler', value: event.trailer || 'Refrigerado', inline: true },
+      { name: '📦 Carga', value: event.cargo || 'Flores Cortas', inline: true },
+      { name: '☑️ Asistencia', value: 'Marca tu asistencia 👻', inline: true },
+      { name: '📎 Evento en TruckersMP', value: `[Clic acá](${event.link || '#'})`, inline: true },
+      { name: '⏰ Hora', value: event.time || 'sábado, 20 de septiembre de 2025, 3:00 p.m.', inline: false }
+    )
+    .setFooter({ text: `✅ RSVP | Created by Emmadness` })
+    .setColor(0x1F8B4C);
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`join_event_${event.id || 'default'}`)
+      .setLabel('✅ RSVP')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`leave_event_${event.id || 'default'}`)
+      .setLabel('❌ Cancelar')
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  return { embed, components: [row] };
+}
+
 async function sendTeamUpdate(target, text, color = 0x3498DB) {
   const embed = {
     title: 'Rotra Club®',
@@ -76,6 +140,7 @@ async function sendTeamUpdate(target, text, color = 0x3498DB) {
   return message;
 }
 
+// --- INTERACTION CREATE ---
 client.on('interactionCreate', async interaction => {
   const channel = interaction.channel;
 
@@ -85,40 +150,42 @@ client.on('interactionCreate', async interaction => {
 
     // --- BOTONES Y SELECT MENU ---
     if (interaction.isButton() || interaction.isStringSelectMenu()) {
-
-      // --- ABRIR TICKET (BOTÓN ANTIGUO) ---
       if (interaction.isButton() && interaction.customId === 'open_ticket') {
-        await createTicket(interaction, user, guild, 'Soporte 🎫'); // tipo por defecto
+        await createTicket(interaction, user, guild, 'Soporte 🎫');
         return;
       }
 
-      // --- ABRIR TICKET (SELECT MENU) ---
       if (interaction.isStringSelectMenu() && interaction.customId === 'open_ticket_select') {
-        const selected = interaction.values[0]; // opción elegida
+        const selected = interaction.values[0];
         let tipoTicket = 'Soporte 🎫';
         if (selected === 'ticket_convoy') tipoTicket = 'Convoy 🚚';
         if (selected === 'ticket_reclutamiento') tipoTicket = 'Reclutamiento 📝';
         if (selected === 'ticket_soporte') tipoTicket = 'Soporte 🎫';
-
         await createTicket(interaction, user, guild, tipoTicket);
         return;
       }
 
-      // --- CERRAR TICKET ---
       if (interaction.isButton() && interaction.customId === 'close_ticket') {
         const member = interaction.member;
-
         if (!allowedUsers.includes(member.id) &&
             !member.roles.cache.some(r => allowedRoles.includes(r.id))) {
           return interaction.reply({ content: '❌ No tienes permiso para cerrar este ticket.', ephemeral: true });
         }
-
         await interaction.channel.delete().catch(err => console.error('❌ Error al eliminar ticket:', err));
+        return;
+      }
+
+      // --- RSVP EVENTOS ---
+      if (interaction.isButton() && interaction.customId.startsWith('join_event_')) {
+        await interaction.reply({ content: `✅ ${user.username} se ha apuntado al evento.`, ephemeral: true });
+        return;
+      }
+      if (interaction.isButton() && interaction.customId.startsWith('leave_event_')) {
+        await interaction.reply({ content: `❌ ${user.username} ha cancelado su asistencia.`, ephemeral: true });
         return;
       }
     }
 
-    // --- COMANDOS ---
     if (!interaction.isChatInputCommand()) return;
 
     // Comprobar permisos
@@ -133,7 +200,7 @@ client.on('interactionCreate', async interaction => {
     const subcommand = interaction.options.getSubcommand(false);
     const name = interaction.options.getString('nombre');
 
-    // --- EMBEDS ---
+    // --- COMANDO /embed ---
     if (command === 'embed') {
       if (subcommand === 'create') {
         const code = interaction.options.getString('codigo');
@@ -215,7 +282,6 @@ client.on('interactionCreate', async interaction => {
         }
         break;
       case 'ticket':
-        // Embed con menú select
         const ticketEmbed = new EmbedBuilder()
           .setTitle('🎫 Rotra Club® - Soporte')
           .setDescription('Si necesitas ayuda o soporte, selecciona el tipo de ticket en el menú de abajo.\nUn miembro del staff se pondrá en contacto contigo.')
@@ -227,29 +293,27 @@ client.on('interactionCreate', async interaction => {
             .setCustomId('open_ticket_select')
             .setPlaceholder('Selecciona el tipo de ticket')
             .addOptions([
-              { 
-                label: 'Invitación a Convoy', 
-                value: 'ticket_convoy', 
-                description: 'Invítanos a tu convoy',
-                emoji: { id: '1420878930197479437' } // Aquí va el ID del emoji
-              },
-              { 
-                label: 'Reclutamiento', 
-                value: 'ticket_reclutamiento', 
-                description: 'Quieres ser parte del VTC?',
-                emoji: { id: '1420878693496000562' } 
-              },
-              { 
-                label: 'Soporte', 
-                value: 'ticket_soporte', 
-                description: 'Crea un ticket de soporte',
-                emoji: { id: '1420878756926722230' } 
-              },
+              { label: 'Invitación a Convoy', value: 'ticket_convoy', description: 'Invítanos a tu convoy', emoji: { id: '1420878930197479437' } },
+              { label: 'Reclutamiento', value: 'ticket_reclutamiento', description: 'Quieres ser parte del VTC?', emoji: { id: '1420878693496000562' } },
+              { label: 'Soporte', value: 'ticket_soporte', description: 'Crea un ticket de soporte', emoji: { id: '1420878756926722230' } },
             ])
         );
 
         await channel.send({ embeds: [ticketEmbed], components: [ticketRow] });
         await interaction.reply({ content: '✅ Mensaje de ticket enviado.', ephemeral: true });
+        break;
+
+      case 'event': // NUEVO COMANDO EVENT
+        const eventData = {
+          id: `${Date.now()}`,
+          title: interaction.options.getString('title'),
+          start: interaction.options.getString('start'),
+          end: interaction.options.getString('end'),
+          time: interaction.options.getString('time'),
+          link: interaction.options.getString('link'),
+        };
+        const { embed, components } = createEventEmbed(eventData);
+        await interaction.reply({ embeds: [embed], components, ephemeral: false });
         break;
     }
 
@@ -271,55 +335,38 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-// --- FUNCIÓN PARA CREAR TICKET (ahora recibe tipoTicket) ---
+// --- FUNCIÓN PARA CREAR TICKET ---
 async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫') {
-  // Limpiar nombre de usuario para el canal
   let username = user.username.toLowerCase().replace(/[^a-z0-9]/g, '-');
   if (username.length > 20) username = username.slice(0, 20);
 
-  // Evitar tickets duplicados
   const existing = guild.channels.cache.find(c => c.name === `ticket-${username}`);
   if (existing) {
     return interaction.reply({ content: `❌ Ya tienes un ticket abierto: ${existing}`, ephemeral: true });
   }
 
-  // Crear canal
   const ticketChannel = await guild.channels.create({
     name: `ticket-${username}`,
     type: ChannelType.GuildText,
     parent: TICKET_CATEGORY,
     permissionOverwrites: [
       { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-      { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-      ...allowedRoles.map(roleId => ({
-        id: roleId,
-        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
-      })),
+      { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.AttachFiles] }
     ],
   });
 
-  // Botón de cerrar ticket
-  const closeRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('close_ticket')
-      .setLabel('Cerrar Ticket 🔒')
-      .setStyle(ButtonStyle.Danger)
+  const embed = new EmbedBuilder()
+    .setTitle(`🎫 Ticket - ${tipoTicket}`)
+    .setDescription(`Hola ${user}, un miembro del Staff se pondrá en contacto contigo pronto.\nSi deseas cerrar el ticket, presiona el botón de abajo.`)
+    .setColor(0x1F8B4C)
+    .setFooter({ text: 'Rotra Club® - Ticket' });
+
+  const closeButton = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('close_ticket').setLabel('Cerrar Ticket').setStyle(ButtonStyle.Danger)
   );
 
-  // Embed de bienvenida
-  const embed = new EmbedBuilder()
-    .setTitle(`🎫 Ticket de ${tipoTicket} - Rotra Club®`)
-    .setDescription(`Hola ${user}, un miembro del staff se pondrá en contacto contigo a la brevedad.`)
-    .setColor(0x1F8B4C)
-    .addFields(
-      { name: 'Usuario', value: `${user.tag}`, inline: true },
-      { name: 'Tipo de Ticket', value: `${tipoTicket}`, inline: true },
-      { name: 'Fecha de apertura', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
-    )
-    .setFooter({ text: 'Rotra Club® - Soporte VTC', iconURL: user.displayAvatarURL() });
-
-  await ticketChannel.send({ embeds: [embed], components: [closeRow] });
-  return interaction.reply({ content: `✅ Tu ticket de ${tipoTicket} ha sido creado: ${ticketChannel}`, ephemeral: true });
+  await ticketChannel.send({ content: `<@${user.id}>`, embeds: [embed], components: [closeButton] });
+  await interaction.reply({ content: `✅ Ticket creado: ${ticketChannel}`, ephemeral: true });
 }
 
 client.login(process.env.DISCORD_TOKEN);
