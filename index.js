@@ -221,7 +221,7 @@ client.on('interactionCreate', async interaction => {
             .setCustomId('open_ticket_select')
             .setPlaceholder('Selecciona el tipo de ticket')
             .addOptions([
-              { label: 'Invitación a Convoy', value: 'ticket_convoy', emoji: 'truckersmp1', description: 'Invitanos a tu convoy' },
+              { label: 'Invitación a Convoy', value: 'ticket_convoy', emoji: '🚚', description: 'Invitanos a tu convoy' },
               { label: 'Reclutamiento', value: 'ticket_reclutamiento', emoji: '📝', description: 'Quieres ser parte del VTC?' },
               { label: 'Soporte', value: 'ticket_soporte', emoji: '🎫', description: 'Crea un ticket de soporte' },
             ])
@@ -301,4 +301,5 @@ async function createTicket(interaction, user, guild) {
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
