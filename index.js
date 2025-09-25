@@ -82,65 +82,65 @@ client.on('interactionCreate', async interaction => {
   try {
     // --- BOTONES ---
     if (interaction.isButton()) {
-      const guild = interaction.guild;
+  const guild = interaction.guild;
+  const channel = interaction.channel;
+  const user = interaction.user;
 
-      // ABRIR TICKET
-      if (interaction.customId === 'open_ticket') {
-        const user = interaction.user;
+  // --- ABRIR TICKET ---
+  if (interaction.customId === 'open_ticket') {
 
-        // Evitar que un usuario abra más de un ticket
-        const existing = guild.channels.cache.find(
-          c => c.name === `ticket-${user.username.toLowerCase()}`
-        );
-        if (existing) {
-          return interaction.reply({ content: `❌ Ya tienes un ticket abierto: ${existing}`, ephemeral: true });
-        }
-
-        const ticketChannel = await guild.channels.create({
-  name: `ticket-${user.username}`,
-  type: ChannelType.GuildText, // Correcto
-  parent: TICKET_CATEGORY,
-  permissionOverwrites: [
-    { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }, // público no ve
-    { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }, // usuario ve y escribe
-    ...allowedRoles.map(roleId => ({
-      id: roleId,
-      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages], // staff ve y escribe
-    })),
-  ],
-});
-
-        const closeRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('close_ticket')
-            .setLabel('Cerrar Ticket 🔒')
-            .setStyle(ButtonStyle.Danger)
-        );
-
-        const embed = new EmbedBuilder()
-          .setTitle('Rotra Club® - Ticket')
-          .setDescription(`Hola ${user}, un staff se pondrá en contacto contigo pronto.`)
-          .setColor(0x3498DB);
-
-        await ticketChannel.send({ embeds: [embed], components: [closeRow] });
-        return interaction.reply({ content: `✅ Tu ticket ha sido creado: ${ticketChannel}`, ephemeral: true });
-      }
-
-      // CERRAR TICKET
-      if (interaction.customId === 'close_ticket') {
-        const member = interaction.member;
-
-        if (
-          !allowedUsers.includes(member.id) &&
-          !member.roles.cache.some(r => allowedRoles.includes(r.id))
-        ) {
-          return interaction.reply({ content: '❌ No tienes permiso para cerrar este ticket.', ephemeral: true });
-        }
-
-        return channel.delete().catch(err => console.error('❌ Error al eliminar ticket:', err));
-      }
-      return; // Salimos del botón
+    // Evitar que el usuario abra más de un ticket
+    const existing = guild.channels.cache.find(c => c.name === `ticket-${user.id}`);
+    if (existing) {
+      return interaction.reply({ content: `❌ Ya tienes un ticket abierto: ${existing}`, ephemeral: true });
     }
+
+    // Crear el canal
+    const ticketChannel = await guild.channels.create({
+      name: `ticket-${user.id}`,
+      type: ChannelType.GuildText,
+      parent: TICKET_CATEGORY,
+      permissionOverwrites: [
+        { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }, // todos no ven
+        { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }, // usuario ve y escribe
+        ...allowedRoles.map(roleId => ({
+          id: roleId,
+          allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages], // staff ve y escribe
+        })),
+      ],
+    });
+
+    // Botón de cerrar ticket
+    const closeRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('close_ticket')
+        .setLabel('Cerrar Ticket 🔒')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    // Embed de bienvenida
+    const embed = new EmbedBuilder()
+      .setTitle('🎫 Rotra Club® - Ticket')
+      .setDescription(`Hola ${user}, un staff se pondrá en contacto contigo pronto.`)
+      .setColor(0x3498DB);
+
+    await ticketChannel.send({ embeds: [embed], components: [closeRow] });
+    return interaction.reply({ content: `✅ Tu ticket ha sido creado: ${ticketChannel}`, ephemeral: true });
+  }
+
+  // --- CERRAR TICKET ---
+  if (interaction.customId === 'close_ticket') {
+    const member = interaction.member;
+
+    if (!allowedUsers.includes(member.id) &&
+        !member.roles.cache.some(r => allowedRoles.includes(r.id))) {
+      return interaction.reply({ content: '❌ No tienes permiso para cerrar este ticket.', ephemeral: true });
+    }
+
+    await channel.delete().catch(err => console.error('❌ Error al eliminar ticket:', err));
+  }
+}
+
 
     // --- COMANDOS ---
     if (!interaction.isChatInputCommand()) return;
@@ -279,4 +279,5 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
 
