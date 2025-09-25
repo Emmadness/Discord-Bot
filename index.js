@@ -79,7 +79,7 @@ async function registerSlashCommands() {
 async function setupTicketSystem(channel) {
   const embed = new EmbedBuilder()
     .setTitle('📩 Soporte - Rotra Club ®')
-    .setDescription('Haz clic en el botón para crear un ticket.\n\nSolo tu y el staff podran verlo')
+    .setDescription('Haz clic en el botón para crear un ticket.\n\nSolo tú y el staff podrán verlo.')
     .setColor(0x3498DB);
 
   const button = new ActionRowBuilder().addComponents(
@@ -171,6 +171,3 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
-
-
-
