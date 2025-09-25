@@ -255,12 +255,30 @@ client.on('interactionCreate', async interaction => {
           .setFooter({ text: 'Rotra Club® - Soporte VTC' });
 
         const ticketRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('open_ticket')
-            .setLabel('Abrir Ticket')
-            .setStyle(ButtonStyle.Primary)
-            .setEmoji({ name: 'truckersmp1', id: '1420878930197479437' })
-        );
+  new StringSelectMenuBuilder()
+    .setCustomId('open_ticket_select')
+    .setPlaceholder('Selecciona el tipo de ticket')
+    .addOptions([
+      {
+        label: 'Invitación a Convoy',
+        description: 'Crea un ticket para invitacion',
+        value: 'ticket_convoy',
+        emoji: 'truckersmp1', // puedes poner emoji Unicode o tu emoji personalizado
+      },
+      {
+        label: 'Reclutamiento',
+        description: 'Crea un ticket para ingresar',
+        value: 'ticket_reclutamiento',
+        emoji: '📝',
+      },
+      {
+        label: 'Soporte',
+        description: 'Crea un ticket de soporte',
+        value: 'ticket_soporte',
+        emoji: 'rotra',
+      },
+    ])
+);
 
         await channel.send({ embeds: [ticketEmbed], components: [ticketRow] });
         await interaction.reply({ content: '✅ Mensaje de ticket enviado.', ephemeral: true });
@@ -286,4 +304,5 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
 
