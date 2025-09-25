@@ -123,51 +123,70 @@ client.on('interactionCreate', async interaction => {
 
   // Botones del sistema de tickets
   if (interaction.isButton()) {
-    if (interaction.customId === 'create_ticket') {
-      const existing = interaction.guild.channels.cache.find(c => c.name === `ticket-${interaction.user.id}`);
-      if (existing) {
-        return interaction.reply({ content: '❌ Ya tienes un ticket abierto.', ephemeral: true });
-      }
-
-      const ticketChannel = await interaction.guild.channels.create({
-        name: `ticket-${interaction.user.username}`,
-        type: ChannelType.GuildText,
-        permissionOverwrites: [
-          {
-            id: interaction.guild.id,
-            deny: [PermissionFlagsBits.ViewChannel],
-          },
-          {
-            id: interaction.user.id,
-            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
-          },
-          ...staffRoles.map(roleId => ({
-            id: roleId,
-            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
-          }))
-        ]
-      });
-
-      const ticketEmbed = new EmbedBuilder()
-        .setTitle('🎫 Ticket de Soporte')
-        .setDescription(`Hola ${interaction.user}, el staff te atenderá en breve.`)
-        .setColor(0x2ECC71);
-
-      const closeButton = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId('close_ticket')
-          .setLabel('🔒 Cerrar Ticket')
-          .setStyle(ButtonStyle.Danger)
-      );
-
-      await ticketChannel.send({ embeds: [ticketEmbed], components: [closeButton] });
-      await interaction.reply({ content: `✅ Ticket creado: ${ticketChannel}`, ephemeral: true });
+  if (interaction.customId === 'create_ticket') {
+    const existing = interaction.guild.channels.cache.find(c => c.name === `ticket-${interaction.user.id}`);
+    if (existing) {
+      return interaction.reply({ content: '❌ Ya tienes un ticket abierto.', ephemeral: true });
     }
 
-    if (interaction.customId === 'close_ticket') {
-      await interaction.channel.delete().catch(() => {});
-    }
+    const ticketChannel = await interaction.guild.channels.create({
+      name: `ticket-${interaction.user.username}`,
+      type: ChannelType.GuildText,
+      permissionOverwrites: [
+        {
+          id: interaction.guild.id,
+          deny: [PermissionFlagsBits.ViewChannel],
+        },
+        {
+          id: interaction.user.id,
+          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+        },
+        ...staffRoles.map(roleId => ({
+          id: roleId,
+          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+        }))
+      ]
+    });
+
+    const ticketEmbed = new EmbedBuilder()
+      .setTitle('🎫 Ticket de Soporte')
+      .setDescription(`Hola ${interaction.user}, el staff te atenderá en breve.`)
+      .setColor(0x2ECC71);
+
+    // Creamos el botón solo para staff
+    const closeButton = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('close_ticket')
+        .setLabel('🔒 Cerrar Ticket')
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(false) // Staff puede usarlo
+    );
+
+    // Enviamos el embed
+    const msg = await ticketChannel.send({ embeds: [ticketEmbed], components: [closeButton] });
+
+    // Deshabilitamos el botón para todos los demás usuarios (opcional: lo hace invisible)
+    // Esto es un extra, porque la seguridad real la da la validación al presionar
+    const updatedButton = ActionRowBuilder.from(closeButton).setComponents(
+      ButtonBuilder.from(closeButton.components[0]).setDisabled(true)
+    );
+    await msg.edit({ components: [updatedButton] });
+
+    await interaction.reply({ content: `✅ Ticket creado: ${ticketChannel}`, ephemeral: true });
   }
+
+  if (interaction.customId === 'close_ticket') {
+    const member = interaction.member;
+    const hasPermission = staffRoles.some(roleId => member.roles.cache.has(roleId));
+
+    if (!hasPermission) {
+      return interaction.reply({ content: '❌ No tienes permiso para cerrar este ticket.', ephemeral: true });
+    }
+
+    await interaction.channel.delete().catch(() => {});
+  }
+}
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
