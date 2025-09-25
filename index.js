@@ -222,8 +222,15 @@ async function handleEvento(interaction) {
   // CREAR
   if (sub === 'crear') {
     const titulo = interaction.options.getString('titulo');
+    const titulo = interaction.options.getString('juego');
     const fechaRaw = interaction.options.getString('fecha');
-    const ruta = interaction.options.getString('ruta');
+    const ruta = interaction.options.getString('salida');
+    const ruta = interaction.options.getString('llegada');
+    const titulo = interaction.options.getString('camion');
+    const titulo = interaction.options.getString('trailer');
+    const titulo = interaction.options.getString('carga');
+    const titulo = interaction.options.getString('asistencia');
+    const titulo = interaction.options.getString('evento');
     const servidor = interaction.options.getString('servidor');
     const dlc = interaction.options.getString('dlc') || 'Ninguno';
 
@@ -289,3 +296,4 @@ async function handleEvento(interaction) {
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
