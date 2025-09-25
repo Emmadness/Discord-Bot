@@ -97,18 +97,18 @@ client.on('interactionCreate', async interaction => {
         }
 
         const ticketChannel = await guild.channels.create({
-          name: `ticket-${user.username}`,
-          type: ChannelType.GuildText,
-          parent: TICKET_CATEGORY,
-          permissionOverwrites: [
-            { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-            { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-            ...allowedRoles.map(roleId => ({
-              id: roleId,
-              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
-            })),
-          ],
-        });
+  name: `ticket-${user.username}`,
+  type: ChannelType.GuildText, // Correcto
+  parent: TICKET_CATEGORY,
+  permissionOverwrites: [
+    { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] }, // público no ve
+    { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] }, // usuario ve y escribe
+    ...allowedRoles.map(roleId => ({
+      id: roleId,
+      allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages], // staff ve y escribe
+    })),
+  ],
+});
 
         const closeRow = new ActionRowBuilder().addComponents(
           new ButtonBuilder()
@@ -239,16 +239,25 @@ client.on('interactionCreate', async interaction => {
         }
         break;
       case 'ticket':
-        // Comando para enviar mensaje de ticket con botón
-        const ticketRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('open_ticket')
-            .setLabel('Abrir Ticket 🎫')
-            .setStyle(ButtonStyle.Primary)
-        );
-        await channel.send({ content: '🎫 Haz click para abrir un ticket privado.', components: [ticketRow] });
-        await interaction.reply({ content: '✅ Mensaje de ticket enviado.', ephemeral: true });
-        break;
+  // Embed estilo Rotra Club®
+  const ticketEmbed = new EmbedBuilder()
+    .setTitle('🎫 Rotra Club® - Soporte')
+    .setDescription('Si necesitas ayuda o soporte, presiona el botón de abajo para abrir un ticket privado.\nUn miembro del staff se pondrá en contacto contigo.')
+    .setColor(0x3498DB)
+    .setFooter({ text: 'Rotra Club® - Soporte VTC' });
+
+  const ticketRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('open_ticket')
+      .setLabel('Abrir Ticket')
+      .setStyle(ButtonStyle.Primary)
+      .setEmoji('🎫')
+  );
+
+  await channel.send({ embeds: [ticketEmbed], components: [ticketRow] });
+  await interaction.reply({ content: '✅ Mensaje de ticket enviado.', ephemeral: true });
+  break;
+
     }
 
     if (command !== 'embed' && !interaction.deferred && !interaction.replied) {
@@ -270,3 +279,4 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
