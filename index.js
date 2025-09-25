@@ -122,15 +122,14 @@ client.on('interactionCreate', async interaction => {
 
         // Embed de bienvenida mejorado
         const embed = new EmbedBuilder()
-  .setTitle(`🎫 Ticket de Soporte - Rotra Club®`)
-  .setDescription(`Hola ${user}, un miembro del staff se pondrá en contacto contigo a la brevedad.`)
-  .setColor(roleColor)
-  .setThumbnail('https://media.discordapp.net/attachments/1387558326463893736/1420235401246933002/rotra_logo_512.png?ex=68d5fa4a&is=68d4a8ca&hm=b9e0976fc368d4fa514a3323c5aa1bdfcaf30333337ddacf48eabb701050880f&=&format=webp&quality=lossless') // aquí va tu imagen pequeña
-  .addFields(
-    { name: 'Usuario', value: `${user.tag}`, inline: true },
-    { name: 'Fecha de apertura', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
-  )
-  .setFooter({ text: 'Rotra Club® - Soporte VTC', iconURL: user.displayAvatarURL() });
+          .setTitle(`🎫 Ticket de Soporte - Rotra Club®`)
+          .setDescription(`Hola ${user}, un miembro del staff se pondrá en contacto contigo a la brevedad.`)
+          .setColor(0x1F8B4C)
+          .addFields(
+            { name: 'Usuario', value: `${user.tag}`, inline: true },
+            { name: 'Fecha de apertura', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+          )
+          .setFooter({ text: 'Rotra Club® - Soporte VTC', iconURL: user.displayAvatarURL() });
 
         await ticketChannel.send({ embeds: [embed], components: [closeRow] });
         return interaction.reply({ content: `✅ Tu ticket ha sido creado: ${ticketChannel}`, ephemeral: true });
