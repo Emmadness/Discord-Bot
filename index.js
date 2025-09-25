@@ -1,5 +1,6 @@
 require('dotenv').config();
 const fs = require('fs');
+const path = require('path');
 const axios = require('axios');
 const { 
   Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, 
@@ -22,6 +23,35 @@ const lastEmbeds = new Map();
 // ID de tu categoría de tickets
 const TICKET_CATEGORY = '1386871447980609697';
 
+// Rutas para almacenamiento de eventos
+const EVENTS_DIR = path.join(__dirname, 'events');
+const EVENTS_FILE = path.join(EVENTS_DIR, 'events.json');
+
+function ensureEventsFile() {
+  if (!fs.existsSync(EVENTS_DIR)) fs.mkdirSync(EVENTS_DIR, { recursive: true });
+  if (!fs.existsSync(EVENTS_FILE)) fs.writeFileSync(EVENTS_FILE, '[]', 'utf8');
+}
+
+function loadEvents() {
+  try {
+    ensureEventsFile();
+    const raw = fs.readFileSync(EVENTS_FILE, 'utf8');
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error('Error leyendo events.json, devolviendo []:', err);
+    return [];
+  }
+}
+
+function saveEvents(events) {
+  try {
+    ensureEventsFile();
+    fs.writeFileSync(EVENTS_FILE, JSON.stringify(events, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Error guardando events.json:', err);
+  }
+}
+
 client.once('ready', async () => {
   console.log(`✅ Bot conectado como ${client.user.tag}`);
   client.user.setActivity('Gestionando la VTC', { type: 3 });
@@ -41,6 +71,7 @@ async function registerSlashCommands() {
     new SlashCommandBuilder().setName('ban').setDescription('Usuario baneado de la VTC').addStringOption(opt => opt.setName('nombre').setDescription('Nombre del usuario').setRequired(true)),
     new SlashCommandBuilder().setName('externo').setDescription('Envía el mensaje del embed externo'),
     new SlashCommandBuilder().setName('ticket').setDescription('Envía mensaje para abrir tickets'),
+    // Comando embed con subcommands (create / restore)
     new SlashCommandBuilder()
       .setName('embed')
       .setDescription('Opciones para enviar o recuperar un embed')
@@ -52,6 +83,28 @@ async function registerSlashCommands() {
       .addSubcommand(sub =>
         sub.setName('restore')
           .setDescription('Restaura el último embed enviado por el bot')
+      ),
+    // ----------------- NUEVO: Comandos de evento -----------------
+    new SlashCommandBuilder()
+      .setName('evento')
+      .setDescription('Gestión de eventos de la VTC')
+      .addSubcommand(sub =>
+        sub.setName('crear')
+          .setDescription('Crea un nuevo evento')
+          .addStringOption(opt => opt.setName('titulo').setDescription('Título del evento').setRequired(true))
+          .addStringOption(opt => opt.setName('fecha').setDescription('Fecha y hora (YYYY-MM-DD HH:mm)').setRequired(true))
+          .addStringOption(opt => opt.setName('ruta').setDescription('Ruta del convoy').setRequired(true))
+          .addStringOption(opt => opt.setName('servidor').setDescription('Servidor TMP').setRequired(true))
+          .addStringOption(opt => opt.setName('dlc').setDescription('DLC necesario (opcional)').setRequired(false))
+      )
+      .addSubcommand(sub =>
+        sub.setName('lista')
+          .setDescription('Muestra todos los eventos creados')
+      )
+      .addSubcommand(sub =>
+        sub.setName('borrar')
+          .setDescription('Borra un evento')
+          .addIntegerOption(opt => opt.setName('id').setDescription('ID del evento a borrar').setRequired(true))
       )
   ].map(cmd => cmd.toJSON());
 
@@ -83,6 +136,56 @@ client.on('interactionCreate', async interaction => {
     if (interaction.isButton()) {
       const guild = interaction.guild;
       const user = interaction.user;
+
+      // --- RSVP de eventos (nuevo) ---
+      if (interaction.customId && (interaction.customId.startsWith('evento_yes_') || interaction.customId.startsWith('evento_no_'))) {
+        // customId -> evento_yes_<id> OR evento_no_<id>
+        const parts = interaction.customId.split('_');
+        const action = parts[1]; // yes | no
+        const id = parseInt(parts[2], 10);
+
+        const events = loadEvents();
+        const event = events.find(e => e.id === id);
+        if (!event) {
+          // respuesta ephemerla
+          return interaction.reply({ content: '❌ Evento no encontrado (ya fue borrado).', ephemeral: true });
+        }
+
+        // Dejar/Unir al evento
+        if (action === 'yes') {
+          if (!event.asistentes.includes(user.id)) {
+            event.asistentes.push(user.id);
+          }
+          await interaction.reply({ content: '✅ Te has unido al evento.', ephemeral: true });
+        } else {
+          event.asistentes = event.asistentes.filter(u => u !== user.id);
+          await interaction.reply({ content: '❌ Has cancelado tu asistencia.', ephemeral: true });
+        }
+
+        saveEvents(events);
+
+        // Actualizar embed en el mensaje donde se pulsó el botón
+        try {
+          const asistentes = event.asistentes.map(id => `<@${id}>`).join('\n') || 'Nadie aún';
+          const timestamp = Math.floor(new Date(event.fecha.replace(' ', 'T')).getTime() / 1000);
+
+          const embed = new EmbedBuilder()
+            .setTitle(`📅 ${event.titulo}`)
+            .setDescription(`\n**Ruta:** ${event.ruta}\n**Servidor:** ${event.servidor}\n**DLC:** ${event.dlc}`)
+            .addFields(
+              { name: 'Fecha', value: `<t:${timestamp}:F>`, inline: true },
+              { name: 'Asistentes', value: asistentes }
+            )
+            .setColor(0x2ECC71)
+            .setFooter({ text: `Evento #${event.id}` });
+
+          await interaction.message.edit({ embeds: [embed], components: interaction.message.components });
+        } catch (err) {
+          console.error('Error al actualizar embed del evento:', err);
+        }
+
+        return;
+      }
 
       // --- ABRIR TICKET ---
       if (interaction.customId === 'open_ticket') {
@@ -157,7 +260,7 @@ client.on('interactionCreate', async interaction => {
       !allowedUsers.includes(interaction.user.id) &&
       !interaction.member.roles.cache.some(role => allowedRoles.includes(role.id))
     ) {
-      return interaction.reply({ content: '❌ No tienes permiso para usar este comando.', flags: 64 });
+      return interaction.reply({ content: '❌ No tienes permiso para usar este comando.', ephemeral: true });
     }
 
     const command = interaction.commandName;
@@ -181,21 +284,26 @@ client.on('interactionCreate', async interaction => {
           const msg = await channel.send({ embeds: [embed] });
           lastEmbeds.set(channel.id, msg);
 
-          return interaction.reply({ content: '✅ Embed enviado correctamente.', flags: 64 });
+          return interaction.reply({ content: '✅ Embed enviado correctamente.', ephemeral: true });
         } catch (error) {
           console.error('❌ Error al obtener el embed:', error);
-          return interaction.reply({ content: '❌ No se pudo obtener el embed.', flags: 64 });
+          return interaction.reply({ content: '❌ No se pudo obtener el embed.', ephemeral: true });
         }
       } else if (subcommand === 'restore') {
         const last = lastEmbeds.get(channel.id);
         if (!last || !last.embeds?.length) {
-          return interaction.reply({ content: '❌ No se encontró un embed reciente en este canal.', flags: 64 });
+          return interaction.reply({ content: '❌ No se encontró un embed reciente en este canal.', ephemeral: true });
         }
 
         await channel.send({ embeds: last.embeds });
-        return interaction.reply({ content: '✅ Embed restaurado correctamente.', flags: 64 });
+        return interaction.reply({ content: '✅ Embed restaurado correctamente.', ephemeral: true });
       }
       return;
+    }
+
+    // --- COMANDO EVENTO (nuevo) ---
+    if (command === 'evento') {
+      return handleEvento(interaction);
     }
 
     // --- COMANDOS DE VTC ---
@@ -228,7 +336,7 @@ client.on('interactionCreate', async interaction => {
         await sendTeamUpdate(channel, `• **${name}** ha sido **baneado** de Rotra Club ®. 🚫`, 0xC0392B);
         break;
       case 'externo':
-        await interaction.deferReply({ flags: 64 });
+        await interaction.deferReply({ ephemeral: true });
         try {
           const data = fs.readFileSync('./embeds/externo.json', 'utf8');
           const json = JSON.parse(data);
@@ -267,7 +375,7 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (command !== 'embed' && !interaction.deferred && !interaction.replied) {
-      await interaction.reply({ content: '✅ Enviado.', flags: 64 });
+      await interaction.reply({ content: '✅ Enviado.', ephemeral: true });
     }
 
   } catch (error) {
@@ -276,7 +384,7 @@ client.on('interactionCreate', async interaction => {
       if (interaction.replied || interaction.deferred) {
         await interaction.editReply({ content: '❌ Ocurrió un error al ejecutar el comando.' });
       } else {
-        await interaction.reply({ content: '❌ Ocurrió un error al ejecutar el comando.', flags: 64 });
+        await interaction.reply({ content: '❌ Ocurrió un error al ejecutar el comando.', ephemeral: true });
       }
     } catch (err) {
       console.error('❌ Error al enviar respuesta de error:', err);
@@ -285,3 +393,88 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
+// ----------------- Función que maneja /evento (crear/lista/borrar) -----------------
+async function handleEvento(interaction) {
+  const sub = interaction.options.getSubcommand();
+
+  // --- CREAR EVENTO ---
+  if (sub === 'crear') {
+    const titulo = interaction.options.getString('titulo');
+    const fechaRaw = interaction.options.getString('fecha'); // formato: YYYY-MM-DD HH:mm
+    const ruta = interaction.options.getString('ruta');
+    const servidor = interaction.options.getString('servidor');
+    const dlc = interaction.options.getString('dlc') || 'Ninguno';
+
+    // Parseo robusto de la fecha: convertimos espacio por 'T' para que Date la lea como local
+    const date = new Date(fechaRaw.replace(' ', 'T'));
+    if (isNaN(date.getTime())) {
+      return interaction.reply({ content: '❌ Formato de fecha inválido. Usa `YYYY-MM-DD HH:mm` (ej: 2025-09-20 15:00).', ephemeral: true });
+    }
+    const timestamp = Math.floor(date.getTime() / 1000);
+
+    const events = loadEvents();
+    const id = events.length ? (events[events.length - 1].id + 1) : 1;
+
+    const newEvent = { id, titulo, fecha: fechaRaw, ruta, servidor, dlc, asistentes: [] };
+    events.push(newEvent);
+    saveEvents(events);
+
+    const embed = new EmbedBuilder()
+      .setTitle(`📅 ${titulo}`)
+      .setDescription(`\n**Ruta:** ${ruta}\n**Servidor:** ${servidor}\n**DLC:** ${dlc}`)
+      .addFields({ name: 'Fecha', value: `<t:${timestamp}:F>` })
+      .setColor(0x2ECC71)
+      .setFooter({ text: `Evento #${id}` });
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`evento_yes_${id}`).setLabel('✅ Asistir').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`evento_no_${id}`).setLabel('❌ No asistir').setStyle(ButtonStyle.Danger)
+    );
+
+    // Mensaje público con embed y botones
+    await interaction.reply({ content: '✅ Evento creado y publicado.', ephemeral: true });
+    const msg = await interaction.channel.send({ embeds: [embed], components: [row] });
+
+    // Opcional: guardar messageId si quieres rastrear el mensaje posteriormente
+    // newEvent.messageId = msg.id;
+    // saveEvents(events);
+
+    return;
+  }
+
+  // --- LISTA DE EVENTOS ---
+  if (sub === 'lista') {
+    const events = loadEvents().filter(e => {
+      // opcional: filtrar por fecha futura si lo deseas
+      return true;
+    });
+    if (!events.length) {
+      return interaction.reply({ content: '❌ No hay eventos creados.', ephemeral: true });
+    }
+
+    const list = events.map(e => `**#${e.id}** - ${e.titulo} - <t:${Math.floor(new Date(e.fecha.replace(' ', 'T')).getTime()/1000)}:F>\n` +
+      `Ruta: ${e.ruta} • Servidor: ${e.servidor} • Asistentes: ${e.asistentes.length}`).join('\n\n');
+
+    // Enviar como embed si lo prefieres
+    const embed = new EmbedBuilder()
+      .setTitle('📅 Eventos creados')
+      .setDescription(list)
+      .setColor(0x00af8f);
+
+    return interaction.reply({ embeds: [embed], ephemeral: true });
+  }
+
+  // --- BORRAR EVENTO ---
+  if (sub === 'borrar') {
+    const id = interaction.options.getInteger('id');
+    let events = loadEvents();
+    const before = events.length;
+    events = events.filter(e => e.id !== id);
+    if (events.length === before) {
+      return interaction.reply({ content: `❌ No se encontró el evento #${id}.`, ephemeral: true });
+    }
+    saveEvents(events);
+    return interaction.reply({ content: `✅ Evento #${id} borrado.`, ephemeral: true });
+  }
+}
