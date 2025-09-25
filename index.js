@@ -13,7 +13,7 @@ const {
   ButtonStyle, 
   PermissionFlagsBits, 
   ChannelType 
-} = require('discord.js');
+} = require('index.js');
 
 const client = new Client({
   intents: [
@@ -230,5 +230,6 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
