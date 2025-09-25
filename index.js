@@ -247,42 +247,42 @@ client.on('interactionCreate', async interaction => {
         }
         break;
       case 'ticket':
-        // Embed mejorado para mensaje inicial de tickets
-        const ticketEmbed = new EmbedBuilder()
-          .setTitle('🎫 Rotra Club® - Soporte')
-          .setDescription('Si necesitas ayuda o soporte, presiona el botón de abajo para abrir un ticket privado.\nUn miembro del staff se pondrá en contacto contigo.')
-          .setColor(0x1F8B4C)
-          .setFooter({ text: 'Rotra Club® - Soporte VTC' });
+  // Embed mejorado para mensaje inicial de tickets
+  const ticketEmbed = new EmbedBuilder()
+    .setTitle('🎫 Rotra Club® - Soporte')
+    .setDescription('Si necesitas ayuda o soporte, selecciona el tipo de ticket en el menú de abajo.\nUn miembro del staff se pondrá en contacto contigo.')
+    .setColor(0x1F8B4C)
+    .setFooter({ text: 'Rotra Club® - Soporte VTC' });
 
-        const ticketRow = new ActionRowBuilder().addComponents(
-  new StringSelectMenuBuilder()
-    .setCustomId('open_ticket_select')
-    .setPlaceholder('Selecciona el tipo de ticket')
-    .addOptions([
-      {
-        label: 'Invitación a Convoy',
-        description: 'Crea un ticket para invitacion',
-        value: 'ticket_convoy',
-        emoji: 'truckersmp1', // puedes poner emoji Unicode o tu emoji personalizado
-      },
-      {
-        label: 'Reclutamiento',
-        description: 'Crea un ticket para ingresar',
-        value: 'ticket_reclutamiento',
-        emoji: '📝',
-      },
-      {
-        label: 'Soporte',
-        description: 'Crea un ticket de soporte',
-        value: 'ticket_soporte',
-        emoji: 'rotra',
-      },
-    ])
-);
+  const ticketRow = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('open_ticket_select')
+      .setPlaceholder('Selecciona el tipo de ticket')
+      .addOptions([
+        {
+          label: 'Invitación a Convoy',
+          description: 'Crea un ticket para unirte a un convoy',
+          value: 'ticket_convoy',
+          emoji: '🚚', // Emoji Unicode
+        },
+        {
+          label: 'Reclutamiento',
+          description: 'Crea un ticket de reclutamiento',
+          value: 'ticket_reclutamiento',
+          emoji: '📝',
+        },
+        {
+          label: 'Soporte',
+          description: 'Crea un ticket de soporte',
+          value: 'ticket_soporte',
+          emoji: '🎫',
+        },
+      ])
+  );
 
-        await channel.send({ embeds: [ticketEmbed], components: [ticketRow] });
-        await interaction.reply({ content: '✅ Mensaje de ticket enviado.', ephemeral: true });
-        break;
+  await channel.send({ embeds: [ticketEmbed], components: [ticketRow] });
+  await interaction.reply({ content: '✅ Mensaje de ticket enviado.', ephemeral: true });
+  break;
     }
 
     if (command !== 'embed' && !interaction.deferred && !interaction.replied) {
@@ -304,5 +304,6 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
