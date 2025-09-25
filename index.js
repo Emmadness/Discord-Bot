@@ -259,7 +259,7 @@ client.on('interactionCreate', async interaction => {
             .setCustomId('open_ticket')
             .setLabel('Abrir Ticket')
             .setStyle(ButtonStyle.Primary)
-            .setEmoji('🎫')
+            .setEmoji({ name: 'truckersmp1', id: '1420878930197479437' })
         );
 
         await channel.send({ embeds: [ticketEmbed], components: [ticketRow] });
@@ -286,3 +286,4 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
