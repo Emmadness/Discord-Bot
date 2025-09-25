@@ -29,7 +29,7 @@ const allowedRoles = ['1411835087120629952', '1386877603130114098', '13868771761
 const lastEmbeds = new Map();
 
 // Roles que tendrán acceso a tickets
-const staffRoles = ['1411835087120629952', '1386877603130114098'];
+const staffRoles = ['1411835087120629952', '1386877603130114098', '1386876691552669786', '1386877367028547624'];
 
 client.once('ready', async () => {
   console.log(`✅ Bot conectado como ${client.user.tag}`);
