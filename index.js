@@ -1,10 +1,10 @@
-
 require('dotenv').config();
 const fs = require('fs');
 const axios = require('axios');
 const { 
   Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, 
-  ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField 
+  ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField,
+  StringSelectMenuBuilder
 } = require('discord.js');
 
 const client = new Client({
@@ -80,64 +80,26 @@ client.on('interactionCreate', async interaction => {
   const channel = interaction.channel;
 
   try {
+    const guild = interaction.guild;
+    const user = interaction.user;
+
     // --- BOTONES ---
-    if (interaction.isButton()) {
-      const guild = interaction.guild;
-      const user = interaction.user;
+    if (interaction.isButton() || interaction.isStringSelectMenu()) {
 
-      // --- ABRIR TICKET ---
-      if (interaction.customId === 'open_ticket') {
+      // --- ABRIR TICKET (BOTÓN ANTIGUO) ---
+      if (interaction.isButton() && interaction.customId === 'open_ticket') {
+        await createTicket(interaction, user, guild);
+        return;
+      }
 
-        // Limpiar nombre de usuario para el canal
-        let username = user.username.toLowerCase().replace(/[^a-z0-9]/g, '-');
-        if (username.length > 20) username = username.slice(0, 20);
-
-        // Evitar tickets duplicados
-        const existing = guild.channels.cache.find(c => c.name === `ticket-${username}`);
-        if (existing) {
-          return interaction.reply({ content: `❌ Ya tienes un ticket abierto: ${existing}`, ephemeral: true });
-        }
-
-        // Crear canal
-        const ticketChannel = await guild.channels.create({
-          name: `ticket-${username}`,
-          type: ChannelType.GuildText,
-          parent: TICKET_CATEGORY,
-          permissionOverwrites: [
-            { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-            { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
-            ...allowedRoles.map(roleId => ({
-              id: roleId,
-              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
-            })),
-          ],
-        });
-
-        // Botón de cerrar ticket
-        const closeRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('close_ticket')
-            .setLabel('Cerrar Ticket 🔒')
-            .setStyle(ButtonStyle.Danger)
-        );
-
-        // Embed de bienvenida mejorado
-        const embed = new EmbedBuilder()
-          .setTitle(`🎫 Ticket de Soporte - Rotra Club®`)
-          .setDescription(`Hola ${user}, un miembro del staff se pondrá en contacto contigo a la brevedad.`)
-          .setColor(0x1F8B4C)
-          .addFields(
-            { name: 'Usuario', value: `${user.tag}`, inline: true },
-            { name: 'Fecha de apertura', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
-          )
-          .setFooter({ text: 'Rotra Club® - Soporte VTC', iconURL: user.displayAvatarURL() });
-
-        await ticketChannel.send({ embeds: [embed], components: [closeRow] });
-        return interaction.reply({ content: `✅ Tu ticket ha sido creado: ${ticketChannel}`, ephemeral: true });
+      // --- ABRIR TICKET (SELECT MENU) ---
+      if (interaction.isStringSelectMenu() && interaction.customId === 'open_ticket_select') {
+        await createTicket(interaction, user, guild);
+        return;
       }
 
       // --- CERRAR TICKET ---
-      if (interaction.customId === 'close_ticket') {
+      if (interaction.isButton() && interaction.customId === 'close_ticket') {
         const member = interaction.member;
 
         if (!allowedUsers.includes(member.id) &&
@@ -146,8 +108,8 @@ client.on('interactionCreate', async interaction => {
         }
 
         await interaction.channel.delete().catch(err => console.error('❌ Error al eliminar ticket:', err));
+        return;
       }
-      return;
     }
 
     // --- COMANDOS ---
@@ -247,42 +209,27 @@ client.on('interactionCreate', async interaction => {
         }
         break;
       case 'ticket':
-  // Embed mejorado para mensaje inicial de tickets
-  const ticketEmbed = new EmbedBuilder()
-    .setTitle('🎫 Rotra Club® - Soporte')
-    .setDescription('Si necesitas ayuda o soporte, selecciona el tipo de ticket en el menú de abajo.\nUn miembro del staff se pondrá en contacto contigo.')
-    .setColor(0x1F8B4C)
-    .setFooter({ text: 'Rotra Club® - Soporte VTC' });
+        // Embed con menú select
+        const ticketEmbed = new EmbedBuilder()
+          .setTitle('🎫 Rotra Club® - Soporte')
+          .setDescription('Si necesitas ayuda o soporte, selecciona el tipo de ticket en el menú de abajo.\nUn miembro del staff se pondrá en contacto contigo.')
+          .setColor(0x1F8B4C)
+          .setFooter({ text: 'Rotra Club® - Soporte VTC' });
 
-  const ticketRow = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId('open_ticket_select')
-      .setPlaceholder('Selecciona el tipo de ticket')
-      .addOptions([
-        {
-          label: 'Invitación a Convoy',
-          description: 'Crea un ticket para unirte a un convoy',
-          value: 'ticket_convoy',
-          emoji: '🚚', // Emoji Unicode
-        },
-        {
-          label: 'Reclutamiento',
-          description: 'Crea un ticket de reclutamiento',
-          value: 'ticket_reclutamiento',
-          emoji: '📝',
-        },
-        {
-          label: 'Soporte',
-          description: 'Crea un ticket de soporte',
-          value: 'ticket_soporte',
-          emoji: '🎫',
-        },
-      ])
-  );
+        const ticketRow = new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('open_ticket_select')
+            .setPlaceholder('Selecciona el tipo de ticket')
+            .addOptions([
+              { label: 'Invitación a Convoy', value: 'ticket_convoy', emoji: '🚚', description: 'Crea un ticket para unirte a un convoy' },
+              { label: 'Reclutamiento', value: 'ticket_reclutamiento', emoji: '📝', description: 'Crea un ticket de reclutamiento' },
+              { label: 'Soporte', value: 'ticket_soporte', emoji: '🎫', description: 'Crea un ticket de soporte' },
+            ])
+        );
 
-  await channel.send({ embeds: [ticketEmbed], components: [ticketRow] });
-  await interaction.reply({ content: '✅ Mensaje de ticket enviado.', ephemeral: true });
-  break;
+        await channel.send({ embeds: [ticketEmbed], components: [ticketRow] });
+        await interaction.reply({ content: '✅ Mensaje de ticket enviado.', ephemeral: true });
+        break;
     }
 
     if (command !== 'embed' && !interaction.deferred && !interaction.replied) {
@@ -303,7 +250,54 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
+// --- FUNCIÓN PARA CREAR TICKET ---
+async function createTicket(interaction, user, guild) {
+  // Limpiar nombre de usuario para el canal
+  let username = user.username.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  if (username.length > 20) username = username.slice(0, 20);
+
+  // Evitar tickets duplicados
+  const existing = guild.channels.cache.find(c => c.name === `ticket-${username}`);
+  if (existing) {
+    return interaction.reply({ content: `❌ Ya tienes un ticket abierto: ${existing}`, ephemeral: true });
+  }
+
+  // Crear canal
+  const ticketChannel = await guild.channels.create({
+    name: `ticket-${username}`,
+    type: ChannelType.GuildText,
+    parent: TICKET_CATEGORY,
+    permissionOverwrites: [
+      { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+      { id: user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+      ...allowedRoles.map(roleId => ({
+        id: roleId,
+        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
+      })),
+    ],
+  });
+
+  // Botón de cerrar ticket
+  const closeRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('close_ticket')
+      .setLabel('Cerrar Ticket 🔒')
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  // Embed de bienvenida
+  const embed = new EmbedBuilder()
+    .setTitle(`🎫 Ticket de Soporte - Rotra Club®`)
+    .setDescription(`Hola ${user}, un miembro del staff se pondrá en contacto contigo a la brevedad.`)
+    .setColor(0x1F8B4C)
+    .addFields(
+      { name: 'Usuario', value: `${user.tag}`, inline: true },
+      { name: 'Fecha de apertura', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+    )
+    .setFooter({ text: 'Rotra Club® - Soporte VTC', iconURL: user.displayAvatarURL() });
+
+  await ticketChannel.send({ embeds: [embed], components: [closeRow] });
+  return interaction.reply({ content: `✅ Tu ticket ha sido creado: ${ticketChannel}`, ephemeral: true });
+}
+
 client.login(process.env.DISCORD_TOKEN);
-
-
-
