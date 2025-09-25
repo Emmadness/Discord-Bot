@@ -478,3 +478,4 @@ async function handleEvento(interaction) {
     return interaction.reply({ content: `✅ Evento #${id} borrado.`, ephemeral: true });
   }
 }
+
