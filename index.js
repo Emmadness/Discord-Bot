@@ -96,9 +96,9 @@ client.on('interactionCreate', async interaction => {
       if (interaction.isStringSelectMenu() && interaction.customId === 'open_ticket_select') {
         const selected = interaction.values[0]; // opción elegida
         let tipoTicket = 'Soporte 🎫';
-        if (selected === 'ticket_convoy') tipoTicket = 'Convoy 🚚';
-        if (selected === 'ticket_reclutamiento') tipoTicket = 'Reclutamiento 📝';
-        if (selected === 'ticket_soporte') tipoTicket = 'Soporte 🎫';
+        if (selected === 'ticket_se') tipoTicket = 'Save Edit';
+        if (selected === 'ticket_lm') tipoTicket = 'Local Mods';
+        if (selected === 'ticket_soporte') tipoTicket = 'Soporte';
 
         await createTicket(interaction, user, guild, tipoTicket);
         return;
@@ -228,15 +228,15 @@ client.on('interactionCreate', async interaction => {
             .setPlaceholder('Selecciona el tipo de ticket')
             .addOptions([
               { 
-                label: 'Invitación a Convoy', 
-                value: 'ticket_convoy', 
-                description: 'Invítanos a tu convoy',
+                label: 'Save Edit Team', 
+                value: 'ticket_se', 
+                description: 'Aplica al Team SE',
                 emoji: { id: '1420878930197479437' } // Aquí va el ID del emoji
               },
               { 
-                label: 'Reclutamiento', 
-                value: 'ticket_reclutamiento', 
-                description: 'Quieres ser parte del VTC?',
+                label: 'Local Mods', 
+                value: 'ticket_lm', 
+                description: 'Aplica al Team LM',
                 emoji: { id: '1420878693496000562' } 
               },
               { 
@@ -323,6 +323,7 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
 
