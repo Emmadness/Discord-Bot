@@ -25,7 +25,7 @@ const TICKET_CATEGORY = '1386871447980609697';
 
 client.once('ready', async () => {
   console.log(`✅ Bot conectado como ${client.user.tag}`);
-  client.user.setActivity('Gestionando la VTC', { type: 3 });
+  //client.user.setActivity('Gestionando la VTC', { type: 0 });
   await registerSlashCommands();
 });
 
@@ -323,4 +323,5 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
