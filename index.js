@@ -67,7 +67,7 @@ async function registerSlashCommands() {
 
 async function sendTeamUpdate(target, text, color = 0x3498DB) {
   const embed = {
-    title: 'Rotra Club®',
+    title: 'Update',
     description: text,
     color: color
   };
@@ -323,6 +323,7 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
 
