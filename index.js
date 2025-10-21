@@ -185,16 +185,16 @@ client.on('interactionCreate', async interaction => {
         await sendTeamUpdate(channel, `• **${name}** se unió a **Human Resources** de Rotra Club ®. 👩‍💻`, 0x9B59B6);
         break;
       case 'admin':
-        await sendTeamUpdate(channel, `• **${name}** se unió como parte del **Staff de Rotra Club ®**. 🛠️`, 0xF1C40F);
+        await sendTeamUpdate(channel, `• **${name}** se unió como parte del **Staff SE de Players On Duty**. 🛠️`, 0xF1C40F);
         break;
       case 'staff':
-        await sendTeamUpdate(channel, `• **${name}** se ha unido al **Staff de Rotra Club ®**. 🧩`, 0x1F618D);
+        await sendTeamUpdate(channel, `• **${name}** se ha unido al **Staff de LM de Players On Duty**. 🧩`, 0x1F618D);
         break;
       case 'leave':
         await sendTeamUpdate(channel, `• **${name}** dejó la VTC. ¡Le deseamos éxito en su camino! 👋`, 0xE74C3C);
         break;
       case 'ban':
-        await sendTeamUpdate(channel, `• **${name}** ha sido **baneado** de Rotra Club ®. 🚫`, 0xC0392B);
+        await sendTeamUpdate(channel, `• **${name}** ha sido **baneado** de de Players On Duty. 🚫`, 0xC0392B);
         break;
       case 'externo':
         await interaction.deferReply({ flags: 64 });
@@ -308,7 +308,7 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 
   // Embed de bienvenida
   const embed = new EmbedBuilder()
-    .setTitle(`🎫 Ticket de ${tipoTicket} - Rotra Club®`)
+    .setTitle(`🎫 Ticket de ${tipoTicket} - POD`)
     .setDescription(`Hola ${user}, un miembro del staff se pondrá en contacto contigo a la brevedad.`)
     .setColor(0x1F8B4C)
     .addFields(
@@ -316,13 +316,14 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
       { name: 'Tipo de Ticket', value: `${tipoTicket}`, inline: true },
       { name: 'Fecha de apertura', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
     )
-    .setFooter({ text: 'Rotra Club® - Soporte VTC', iconURL: user.displayAvatarURL() });
+    .setFooter({ text: 'Players On Duty - Gestión de Tickets', iconURL: user.displayAvatarURL() });
 
   await ticketChannel.send({ embeds: [embed], components: [closeRow] });
   return interaction.reply({ content: `✅ Tu ticket de ${tipoTicket} ha sido creado: ${ticketChannel}`, ephemeral: true });
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
 
