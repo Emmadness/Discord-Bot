@@ -221,6 +221,7 @@ client.on('interactionCreate', async interaction => {
           .setTitle('Players On Duty - Tickets')
           .setDescription('Si quieres unirte al Staff o necesitas soporte, selecciona la opción correspondiente en el menú de abajo.\nUn miembro del equipo se pondrá en contacto contigo a la brevedad para ayudarte.')
           .setColor(0x1F8B4C)
+          .setImage('URL_DE_TU_IMAGEN')
           .setFooter({ text: 'Players On Duty - Gestión de Tickets' });
 
         const ticketRow = new ActionRowBuilder().addComponents(
@@ -324,6 +325,7 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
 
