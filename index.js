@@ -16,8 +16,8 @@ const client = new Client({
 });
 
 // IDs de usuarios y roles permitidos
-const allowedUsers = ['640315344916840478', '192746644939210763'];
-const allowedRoles = ['1386877367028547624', '1386877603130114098', '1386877176124674109']; 
+const allowedUsers = ['640315344916840478', '640315344916840478'];
+const allowedRoles = ['1429906604580667683', '1386877367028547624', '1429995569345990811']; 
 const lastEmbeds = new Map();
 
 // ID de tu categoría de tickets
@@ -323,6 +323,7 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
 
