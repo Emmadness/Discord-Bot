@@ -217,10 +217,10 @@ client.on('interactionCreate', async interaction => {
       case 'ticket':
         // Embed con menú select
         const ticketEmbed = new EmbedBuilder()
-          .setTitle('🎫 Rotra Club® - Soporte')
-          .setDescription('Si necesitas ayuda o soporte, selecciona el tipo de ticket en el menú de abajo.\nUn miembro del staff se pondrá en contacto contigo.')
+          .setTitle('Players On Duty - Tickets')
+          .setDescription('Si quieres unirte al Staff o necesitas soporte, selecciona la opción correspondiente en el menú de abajo.\nUn miembro del equipo se pondrá en contacto contigo a la brevedad para ayudarte.')
           .setColor(0x1F8B4C)
-          .setFooter({ text: 'Rotra Club® - Soporte VTC' });
+          .setFooter({ text: 'Players On Duty - Gestión de Tickets' });
 
         const ticketRow = new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()
@@ -323,6 +323,7 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
 
