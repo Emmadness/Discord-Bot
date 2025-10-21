@@ -21,7 +21,7 @@ const allowedRoles = ['1411835087120629952', '1386877603130114098', '13868771761
 const lastEmbeds = new Map();
 
 // ID de tu categoría de tickets
-const TICKET_CATEGORY = '1386871447980609697';
+const TICKET_CATEGORY = '1429997037549781062';
 
 client.once('ready', async () => {
   console.log(`✅ Bot conectado como ${client.user.tag}`);
@@ -323,4 +323,5 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
