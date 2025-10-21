@@ -1,3 +1,4 @@
+
 require('dotenv').config();
 const fs = require('fs');
 const axios = require('axios');
@@ -136,32 +137,25 @@ client.on('interactionCreate', async interaction => {
     // --- EMBEDS ---
     if (command === 'embed') {
       if (subcommand === 'create') {
-  const code = interaction.options.getString('codigo');
-  try {
-    const url = `https://latamexpress-embed.onrender.com/api/embed/${code}`;
-    const response = await axios.get(url);
-    const embedData = response.data;
+        const code = interaction.options.getString('codigo');
+        try {
+          const url = `https://latamexpress-embed.onrender.com/api/embed/${code}`;
+          const response = await axios.get(url);
+          const embedData = response.data;
 
-    const plainMessage = embedData.message || null; // mensaje normal
-    const actualEmbed = embedData.embed || embedData;  // soporte backward
+          if (typeof embedData.color === 'string' && embedData.color.startsWith('#')) {
+            embedData.color = parseInt(embedData.color.replace('#', ''), 16);
+          }
 
-    if (plainMessage) {
-      await channel.send({ content: plainMessage });
-    }
+          const embed = new EmbedBuilder(embedData);
+          const msg = await channel.send({ embeds: [embed] });
+          lastEmbeds.set(channel.id, msg);
 
-    if (typeof actualEmbed.color === 'string' && actualEmbed.color.startsWith('#')) {
-      actualEmbed.color = parseInt(actualEmbed.color.replace('#', ''), 16);
-    }
-
-    const embed = new EmbedBuilder(actualEmbed);
-    const msg = await channel.send({ embeds: [embed] });
-    lastEmbeds.set(channel.id, msg);
-
-    return interaction.reply({ content: '✅ Embed enviado correctamente.', flags: 64 });
-  } catch (error) {
-    console.error('❌ Error al obtener el embed:', error);
-    return interaction.reply({ content: '❌ No se pudo obtener el embed.', flags: 64 });
-  }
+          return interaction.reply({ content: '✅ Embed enviado correctamente.', flags: 64 });
+        } catch (error) {
+          console.error('❌ Error al obtener el embed:', error);
+          return interaction.reply({ content: '❌ No se pudo obtener el embed.', flags: 64 });
+        }
       } else if (subcommand === 'restore') {
         const last = lastEmbeds.get(channel.id);
         if (!last || !last.embeds?.length) {
@@ -330,7 +324,6 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
-
 
 
 
