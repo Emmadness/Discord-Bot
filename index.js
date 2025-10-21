@@ -140,16 +140,16 @@ client.on('interactionCreate', async interaction => {
         const code = interaction.options.getString('codigo');
         try {
           const url = `https://latamexpress-embed.onrender.com/api/embed/${code}`;
-const response = await axios.get(url);
-const data = response.data;
+          const response = await axios.get(url);
+          const embedData = response.data;
 
-const options = {};
-if (data.content) options.content = data.content;
-if (data.embed) options.embeds = [new EmbedBuilder(data.embed)];
+          if (typeof embedData.color === 'string' && embedData.color.startsWith('#')) {
+            embedData.color = parseInt(embedData.color.replace('#', ''), 16);
+          }
 
-const msg = await channel.send(options);
-lastEmbeds.set(channel.id, msg);
-
+          const embed = new EmbedBuilder(embedData);
+          const msg = await channel.send({ embeds: [embed] });
+          lastEmbeds.set(channel.id, msg);
 
           return interaction.reply({ content: '✅ Embed enviado correctamente.', flags: 64 });
         } catch (error) {
@@ -324,7 +324,6 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
-
 
 
 
