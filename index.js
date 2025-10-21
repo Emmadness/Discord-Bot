@@ -231,19 +231,19 @@ client.on('interactionCreate', async interaction => {
                 label: 'Save Edit Team', 
                 value: 'ticket_se', 
                 description: 'Aplica al Team SE',
-                emoji: { id: '1420878930197479437' } // Aquí va el ID del emoji
+                emoji: { id: '1430015412585758810' } // Aquí va el ID del emoji
               },
               { 
                 label: 'Local Mods', 
                 value: 'ticket_lm', 
                 description: 'Aplica al Team LM',
-                emoji: { id: '1420878693496000562' } 
+                emoji: { id: '1430016029920202864' } 
               },
               { 
                 label: 'Soporte', 
                 value: 'ticket_soporte', 
                 description: 'Crea un ticket de soporte',
-                emoji: { id: '1420878756926722230' } 
+                emoji: { id: '1430016495101935789' } 
               },
             ])
         );
@@ -323,6 +323,7 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
 
