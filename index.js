@@ -96,9 +96,9 @@ client.on('interactionCreate', async interaction => {
       if (interaction.isStringSelectMenu() && interaction.customId === 'open_ticket_select') {
         const selected = interaction.values[0]; // opción elegida
         let tipoTicket = 'Soporte 🎫';
-        if (selected === 'ticket_convoy') tipoTicket = 'Convoy 🚚';
-        if (selected === 'ticket_reclutamiento') tipoTicket = 'Reclutamiento 📝';
-        if (selected === 'ticket_soporte') tipoTicket = 'Soporte 🎫';
+        if (selected === 'ticket_se') tipoTicket = 'Save Edit';
+        if (selected === 'ticket_lm') tipoTicket = 'Local Mods';
+        if (selected === 'ticket_soporte') tipoTicket = 'Soporte';
 
         await createTicket(interaction, user, guild, tipoTicket);
         return;
@@ -188,7 +188,7 @@ client.on('interactionCreate', async interaction => {
         await sendTeamUpdate(channel, `• **${name}** se unió como parte del **Staff de Rotra Club ®**. 🛠️`, 0xF1C40F);
         break;
       case 'staff':
-        await sendTeamUpdate(channel, `• **${name}** se ha unido al **Staff de Rotra Club ®**. 🧩`, 0x1F618D);
+        await sendTeamUpdate(channel, `• **${name}** se ha unido al **Save Edit Team **. 🧩`, 0x1F618D);
         break;
       case 'leave':
         await sendTeamUpdate(channel, `• **${name}** dejó la VTC. ¡Le deseamos éxito en su camino! 👋`, 0xE74C3C);
@@ -217,10 +217,10 @@ client.on('interactionCreate', async interaction => {
       case 'ticket':
         // Embed con menú select
         const ticketEmbed = new EmbedBuilder()
-          .setTitle('🎫 Rotra Club® - Soporte')
-          .setDescription('Si necesitas ayuda o soporte, selecciona el tipo de ticket en el menú de abajo.\nUn miembro del staff se pondrá en contacto contigo.')
+          .setTitle('🎫 POD® - Support')
+          .setDescription('Envianos un Ticket si gustas pertenecer al STAFF.\nTe responderemos en breve.')
           .setColor(0x1F8B4C)
-          .setFooter({ text: 'Rotra Club® - Soporte VTC' });
+          .setFooter({ text: 'Players On Duty' });
 
         const ticketRow = new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()
@@ -228,15 +228,15 @@ client.on('interactionCreate', async interaction => {
             .setPlaceholder('Selecciona el tipo de ticket')
             .addOptions([
               { 
-                label: 'Invitación a Convoy', 
-                value: 'ticket_convoy', 
-                description: 'Invítanos a tu convoy',
+                label: 'Save Edit Team', 
+                value: 'ticket_se', 
+                description: 'Quiero entrar al Staff',
                 emoji: { id: '1420878930197479437' } // Aquí va el ID del emoji
               },
               { 
-                label: 'Reclutamiento', 
-                value: 'ticket_reclutamiento', 
-                description: 'Quieres ser parte del VTC?',
+                label: 'Local Mod Team', 
+                value: 'ticket_lm', 
+                description: 'Quiero entrar al Staff',
                 emoji: { id: '1420878693496000562' } 
               },
               { 
@@ -323,3 +323,4 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
