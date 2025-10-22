@@ -186,7 +186,7 @@ client.on('interactionCreate', async interaction => {
         await sendTeamUpdate(channel, `• **${name}** se unió a **Human Resources** de Rotra Club ®. 👩‍💻`, 0x9B59B6);
         break;
       case 'admin':
-        await sendTeamUpdate(channel, `• **${name}** se unió como parte del **Staff SE de Players On Duty**. 🛠️`, 0xF1C40F);
+        await sendTeamUpdate(channel, `• **${name}** se unió como parte del **Staff SE de Players On Duty**. 🛠️`, 0xE74C3C);
         break;
       case 'staff':
         await sendTeamUpdate(channel, `• **${name}** se ha unido al **Staff de LM de Players On Duty**. 🧩`, 0x1F618D);
@@ -329,6 +329,7 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
 
