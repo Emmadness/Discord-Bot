@@ -66,16 +66,22 @@ async function registerSlashCommands() {
   }
 }
 
-async function sendTeamUpdate(target, text, color = 0x3498DB) {
-  const embed = {
-    title: 'Update',
-    description: text,
-    color: color
-  };
+async function sendTeamUpdate(target, text, color = 0x3498DB, bannerUrl) {
+  const embed = new EmbedBuilder()
+    .setTitle('Update')
+    .setDescription(text)
+    .setColor(color);
+
+  // Si hay banner, lo agregamos
+  if (bannerUrl) {
+    embed.setImage(bannerUrl);
+  }
+
   const message = await target.send({ embeds: [embed] });
   lastEmbeds.set(target.id, message);
   return message;
 }
+
 
 client.on('interactionCreate', async interaction => {
   const channel = interaction.channel;
@@ -335,6 +341,7 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
 
