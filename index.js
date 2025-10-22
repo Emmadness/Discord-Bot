@@ -233,7 +233,7 @@ client.on('interactionCreate', async interaction => {
           .setTitle('Players On Duty - Tickets')
           .setDescription('Si quieres unirte al Staff o necesitas soporte, selecciona la opción correspondiente en el menú de abajo.\nUn miembro del equipo se pondrá en contacto contigo a la brevedad para ayudarte.')
           .setColor(0x1F8B4C)
-          .setImage('https://media.discordapp.net/attachments/1430388517493674015/1430403415011492000/TCCR-Contact-Us.png?ex=68f9a67d&is=68f854fd&hm=3748febf4a76d7b6713c0d653769c5c901250c2a4bd477040bab0a566b99413a&=&format=webp&quality=lossless&width=1872&height=562')
+          .setImage('https://media.discordapp.net/attachments/1430388517493674015/1430415106398879794/Agregar_un_titulo_2.png?ex=68f9b161&is=68f85fe1&hm=b18aa6611f7c3aad83c0b3ed19c32d532fcac1cb0ff5e7b64b395840b7b35614&=&format=webp&quality=lossless&width=1872&height=341')
           .setFooter({ 
            text: 'Players On Duty - Gestión de Tickets', 
            iconURL: 'https://media.discordapp.net/attachments/1430388517493674015/1430392333811322910/wallhaven-2e2o59.png?ex=68f99c2b&is=68f84aab&hm=f5f1a1c1a38c694a392c8434333734e45adf42c9ab7a265e8c228a718b9b48ec&=&format=webp&quality=lossless&width=1522&height=856' // <- aquí va la URL de tu logo
@@ -341,6 +341,7 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
 
