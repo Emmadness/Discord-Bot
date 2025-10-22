@@ -186,8 +186,14 @@ client.on('interactionCreate', async interaction => {
         await sendTeamUpdate(channel, `• **${name}** se unió a **Human Resources** de Rotra Club ®. 👩‍💻`, 0x9B59B6);
         break;
       case 'saveedit':
-        await sendTeamUpdate(channel, `• **${name}** se unió como parte del **Staff <@&1429906604580667683> de Players On Duty**. 🛠️`, 0x27005E);
-        break;
+  await sendTeamUpdate(
+    channel,
+    `• **${name}** se unió como parte del **Staff <@&1429906604580667683> de Players On Duty**. 🛠️`,
+    0x27005E,
+    'https://media.discordapp.net/attachments/1430388517493674015/1430403415011492000/TCCR-Contact-Us.png?ex=68f9a67d&is=68f854fd&hm=3748febf4a76d7b6713c0d653769c5c901250c2a4bd477040bab0a566b99413a&=&format=webp&quality=lossless&width=1872&height=562' // 🖼️ banner
+  );
+  break;
+
       case 'staff':
         await sendTeamUpdate(channel, `• **${name}** se ha unido al **Staff de LM de Players On Duty**. 🧩`, 0x1F618D);
         break;
@@ -329,6 +335,7 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
 
