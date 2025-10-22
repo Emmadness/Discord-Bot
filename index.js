@@ -221,7 +221,7 @@ client.on('interactionCreate', async interaction => {
           .setTitle('Players On Duty - Tickets')
           .setDescription('Si quieres unirte al Staff o necesitas soporte, selecciona la opción correspondiente en el menú de abajo.\nUn miembro del equipo se pondrá en contacto contigo a la brevedad para ayudarte.')
           .setColor(0x1F8B4C)
-          .setImage('URL_DE_TU_IMAGEN')
+          .setImage('https://media.discordapp.net/attachments/1372037431615946775/1430345980498153553/658145f2-c867-4ad5-b83b-a6a86e6c8f94.jpg?ex=68f97100&is=68f81f80&hm=9ea59ee2d70fe82363158f8f0c03042c9d161d9849eb6d02c2431f79597fcc2c&=&format=webp&width=754&height=535')
           .setFooter({ text: 'Players On Duty - Gestión de Tickets' });
 
         const ticketRow = new ActionRowBuilder().addComponents(
@@ -325,6 +325,7 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
 
