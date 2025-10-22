@@ -196,7 +196,7 @@ client.on('interactionCreate', async interaction => {
     channel,
     `• **${name}** se unió como parte del **Staff <@&1429906604580667683> de Players On Duty**. 🛠️`,
     0x27005E,
-    'https://media.discordapp.net/attachments/1430388517493674015/1430413104327426168/Agregar_un_titulo.png?ex=68f9af83&is=68f85e03&hm=547349df5496333af6a3885cf6befc4398b1b7384ea0af2192abfe8ac3b15521&=&format=webp&quality=lossless&width=1872&height=341' // 🖼️ banner
+    'https://media.discordapp.net/attachments/1430388517493674015/1430414377814593578/Agregar_un_titulo_1.png?ex=68f9b0b3&is=68f85f33&hm=e252a92d7874b3f70e921efbbab81348286c33aeceacb2dc75b8b2d0e95f22ec&=&format=webp&quality=lossless&width=1872&height=341' // 🖼️ banner
   );
   break;
 
@@ -341,6 +341,7 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
 
