@@ -224,7 +224,7 @@ client.on('interactionCreate', async interaction => {
           .setImage('https://media.discordapp.net/attachments/1372037431615946775/1430345980498153553/658145f2-c867-4ad5-b83b-a6a86e6c8f94.jpg?ex=68f97100&is=68f81f80&hm=9ea59ee2d70fe82363158f8f0c03042c9d161d9849eb6d02c2431f79597fcc2c&=&format=webp&width=754&height=535')
           .setFooter({ 
            text: 'Players On Duty - Gestión de Tickets', 
-           iconURL: 'https://i.imgur.com/tuLogo.png' // <- aquí va la URL de tu logo
+           iconURL: 'https://media.discordapp.net/attachments/1372037431615946775/1430347643153813535/ae93aa15-f4cd-4bad-8fbf-d79919eb3c38.png?ex=68f9728c&is=68f8210c&hm=a2ba1743cb7e303a99442e2890ac37c0ee400512343c9e6f7c582dc85ae4bb0d&=&format=webp&quality=lossless&width=535&height=535' // <- aquí va la URL de tu logo
            });
 
 
@@ -329,6 +329,7 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
 
 
 
