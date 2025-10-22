@@ -1,4 +1,3 @@
-
 require('dotenv').config();
 const fs = require('fs');
 const axios = require('axios');
@@ -13,23 +12,48 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers, // importante para logs de entrada/salida
   ]
 });
 
 // IDs de usuarios y roles permitidos
-const allowedUsers = ['640315344916840478', '640315344916840478'];
-const allowedRoles = ['1429906604580667683', '1386877367028547624', '1429995569345990811']; 
+const allowedUsers = ['640315344916840478'];
+const allowedRoles = ['1429906604580667683', '1386877367028547624', '1429995569345990811'];
 const lastEmbeds = new Map();
 
-// ID de tu categoría de tickets
+// ID de categoría y canal de logs
 const TICKET_CATEGORY = '1429997006193037464';
+const LOG_CHANNEL_ID = '1372037431615946775';
 
+// ─────────────────────────────
+// ✅ Función para enviar logs
+// ─────────────────────────────
+async function sendLog(guild, embedData) {
+  try {
+    const logChannel = guild.channels.cache.get(LOG_CHANNEL_ID);
+    if (!logChannel) return console.warn('⚠️ Canal de logs no encontrado.');
+
+    const embed = new EmbedBuilder(embedData)
+      .setTimestamp()
+      .setFooter({ text: 'Logs de Moderación', iconURL: guild.iconURL() });
+
+    await logChannel.send({ embeds: [embed] });
+  } catch (error) {
+    console.error('❌ Error al enviar log:', error);
+  }
+}
+
+// ─────────────────────────────
+// ✅ Cuando el bot inicia
+// ─────────────────────────────
 client.once('ready', async () => {
   console.log(`✅ Bot conectado como ${client.user.tag}`);
-  //client.user.setActivity('Gestionando la VTC', { type: 3 });
   await registerSlashCommands();
 });
 
+// ─────────────────────────────
+// ✅ Registro de slash commands
+// ─────────────────────────────
 async function registerSlashCommands() {
   const commands = [
     new SlashCommandBuilder().setName('test').setDescription('Prueba el bot'),
@@ -66,230 +90,31 @@ async function registerSlashCommands() {
   }
 }
 
+// ─────────────────────────────
+// ✅ Función para enviar updates
+// ─────────────────────────────
 async function sendTeamUpdate(target, text, color = 0x3498DB) {
-  const embed = {
-    title: 'Update',
-    description: text,
-    color: color
-  };
+  const embed = new EmbedBuilder()
+    .setTitle('Update')
+    .setDescription(text)
+    .setColor(color);
   const message = await target.send({ embeds: [embed] });
   lastEmbeds.set(target.id, message);
   return message;
 }
 
-client.on('interactionCreate', async interaction => {
-  const channel = interaction.channel;
-
-  try {
-    const guild = interaction.guild;
-    const user = interaction.user;
-
-    // --- BOTONES Y SELECT MENU ---
-    if (interaction.isButton() || interaction.isStringSelectMenu()) {
-
-      // --- ABRIR TICKET (BOTÓN ANTIGUO) ---
-      if (interaction.isButton() && interaction.customId === 'open_ticket') {
-        await createTicket(interaction, user, guild, 'Soporte 🎫'); // tipo por defecto
-        return;
-      }
-
-      // --- ABRIR TICKET (SELECT MENU) ---
-      if (interaction.isStringSelectMenu() && interaction.customId === 'open_ticket_select') {
-        const selected = interaction.values[0]; // opción elegida
-        let tipoTicket = 'Soporte 🎫';
-        if (selected === 'ticket_se') tipoTicket = 'Save Edit';
-        if (selected === 'ticket_lm') tipoTicket = 'Local Mods';
-        if (selected === 'ticket_soporte') tipoTicket = 'Soporte';
-
-        await createTicket(interaction, user, guild, tipoTicket);
-        return;
-      }
-
-      // --- CERRAR TICKET ---
-      if (interaction.isButton() && interaction.customId === 'close_ticket') {
-        const member = interaction.member;
-
-        if (!allowedUsers.includes(member.id) &&
-            !member.roles.cache.some(r => allowedRoles.includes(r.id))) {
-          return interaction.reply({ content: '❌ No tienes permiso para cerrar este ticket.', ephemeral: true });
-        }
-
-        await interaction.channel.delete().catch(err => console.error('❌ Error al eliminar ticket:', err));
-        return;
-      }
-    }
-
-    // --- COMANDOS ---
-    if (!interaction.isChatInputCommand()) return;
-
-    // Comprobar permisos
-    if (
-      !allowedUsers.includes(interaction.user.id) &&
-      !interaction.member.roles.cache.some(role => allowedRoles.includes(role.id))
-    ) {
-      return interaction.reply({ content: '❌ No tienes permiso para usar este comando.', flags: 64 });
-    }
-
-    const command = interaction.commandName;
-    const subcommand = interaction.options.getSubcommand(false);
-    const name = interaction.options.getString('nombre');
-
-    // --- EMBEDS ---
-    if (command === 'embed') {
-      if (subcommand === 'create') {
-        const code = interaction.options.getString('codigo');
-        try {
-          const url = `https://latamexpress-embed.onrender.com/api/embed/${code}`;
-          const response = await axios.get(url);
-          const embedData = response.data;
-
-          if (typeof embedData.color === 'string' && embedData.color.startsWith('#')) {
-            embedData.color = parseInt(embedData.color.replace('#', ''), 16);
-          }
-
-          const embed = new EmbedBuilder(embedData);
-          const msg = await channel.send({ embeds: [embed] });
-          lastEmbeds.set(channel.id, msg);
-
-          return interaction.reply({ content: '✅ Embed enviado correctamente.', flags: 64 });
-        } catch (error) {
-          console.error('❌ Error al obtener el embed:', error);
-          return interaction.reply({ content: '❌ No se pudo obtener el embed.', flags: 64 });
-        }
-      } else if (subcommand === 'restore') {
-        const last = lastEmbeds.get(channel.id);
-        if (!last || !last.embeds?.length) {
-          return interaction.reply({ content: '❌ No se encontró un embed reciente en este canal.', flags: 64 });
-        }
-
-        await channel.send({ embeds: last.embeds });
-        return interaction.reply({ content: '✅ Embed restaurado correctamente.', flags: 64 });
-      }
-      return;
-    }
-
-    // --- COMANDOS DE VTC ---
-    switch (command) {
-      case 'test':
-        await sendTeamUpdate(channel, 'Ejemplo: Un nuevo miembro se unió al equipo 🎉');
-        break;
-      case 'training':
-        await sendTeamUpdate(channel, `• **${name}** se unió como **Trial Driver** de Rotra Club ®. 🚚`, 0x2ECC71);
-        break;	    
-      case 'join':
-        await sendTeamUpdate(channel, `• **${name}** se unió como **Driver** de Rotra Club ®. 🚚`, 0x2ECC71);
-        break;
-      case 'media':
-        await sendTeamUpdate(channel, `• **${name}** se unió al **Media Team** de Rotra Club ®. 📸`, 0x9B59B6);
-        break;
-      case 'hr':
-        await sendTeamUpdate(channel, `• **${name}** se unió a **Human Resources** de Rotra Club ®. 👩‍💻`, 0x9B59B6);
-        break;
-      case 'admin':
-        await sendTeamUpdate(channel, `• **${name}** se unió como parte del **Staff SE de Players On Duty**. 🛠️`, 0xF1C40F);
-        break;
-      case 'staff':
-        await sendTeamUpdate(channel, `• **${name}** se ha unido al **Staff de LM de Players On Duty**. 🧩`, 0x1F618D);
-        break;
-      case 'leave':
-        await sendTeamUpdate(channel, `• **${name}** dejó la VTC. ¡Le deseamos éxito en su camino! 👋`, 0xE74C3C);
-        break;
-      case 'ban':
-        await sendTeamUpdate(channel, `• **${name}** ha sido **baneado** de de Players On Duty. 🚫`, 0xC0392B);
-        break;
-      case 'externo':
-        await interaction.deferReply({ flags: 64 });
-        try {
-          const data = fs.readFileSync('./embeds/externo.json', 'utf8');
-          const json = JSON.parse(data);
-          const options = {};
-          if (json.content) options.content = json.content;
-          if (Array.isArray(json.embeds)) options.embeds = json.embeds;
-          if (Array.isArray(json.components)) options.components = json.components;
-          if (typeof json.tts === 'boolean') options.tts = json.tts;
-          const msg = await channel.send(options);
-          lastEmbeds.set(channel.id, msg);
-          await interaction.editReply({ content: '✅ Enviado.' });
-        } catch (error) {
-          console.error('❌ Error al leer externo.json:', error);
-          await interaction.editReply({ content: '❌ Error al enviar el embed externo.' });
-        }
-        break;
-      case 'ticket':
-        // Embed con menú select
-        const ticketEmbed = new EmbedBuilder()
-          .setTitle('Players On Duty - Tickets')
-          .setDescription('Si quieres unirte al Staff o necesitas soporte, selecciona la opción correspondiente en el menú de abajo.\nUn miembro del equipo se pondrá en contacto contigo a la brevedad para ayudarte.')
-          .setColor(0x1F8B4C)
-          .setImage('https://media.discordapp.net/attachments/1372037431615946775/1430345980498153553/658145f2-c867-4ad5-b83b-a6a86e6c8f94.jpg?ex=68f97100&is=68f81f80&hm=9ea59ee2d70fe82363158f8f0c03042c9d161d9849eb6d02c2431f79597fcc2c&=&format=webp&width=754&height=535')
-          .setFooter({ 
-           text: 'Players On Duty - Gestión de Tickets', 
-           iconURL: 'https://media.discordapp.net/attachments/1372037431615946775/1430347643153813535/ae93aa15-f4cd-4bad-8fbf-d79919eb3c38.png?ex=68f9728c&is=68f8210c&hm=a2ba1743cb7e303a99442e2890ac37c0ee400512343c9e6f7c582dc85ae4bb0d&=&format=webp&quality=lossless&width=535&height=535' // <- aquí va la URL de tu logo
-           });
-
-
-        const ticketRow = new ActionRowBuilder().addComponents(
-          new StringSelectMenuBuilder()
-            .setCustomId('open_ticket_select')
-            .setPlaceholder('Selecciona el tipo de ticket')
-            .addOptions([
-              { 
-                label: 'Save Edit Team', 
-                value: 'ticket_se', 
-                description: 'Aplica al Team SE',
-                emoji: { id: '1430015412585758810' } // Aquí va el ID del emoji
-              },
-              { 
-                label: 'Local Mods', 
-                value: 'ticket_lm', 
-                description: 'Aplica al Team LM',
-                emoji: { id: '1430016029920202864' } 
-              },
-              { 
-                label: 'Soporte', 
-                value: 'ticket_soporte', 
-                description: 'Crea un ticket de soporte',
-                emoji: { id: '1430016495101935789' } 
-              },
-            ])
-        );
-
-        await channel.send({ embeds: [ticketEmbed], components: [ticketRow] });
-        await interaction.reply({ content: '✅ Mensaje de ticket enviado.', ephemeral: true });
-        break;
-    }
-
-    if (command !== 'embed' && !interaction.deferred && !interaction.replied) {
-      await interaction.reply({ content: '✅ Enviado.', flags: 64 });
-    }
-
-  } catch (error) {
-    console.error('❌ Error al ejecutar comando:', error);
-    try {
-      if (interaction.replied || interaction.deferred) {
-        await interaction.editReply({ content: '❌ Ocurrió un error al ejecutar el comando.' });
-      } else {
-        await interaction.reply({ content: '❌ Ocurrió un error al ejecutar el comando.', flags: 64 });
-      }
-    } catch (err) {
-      console.error('❌ Error al enviar respuesta de error:', err);
-    }
-  }
-});
-
-// --- FUNCIÓN PARA CREAR TICKET (ahora recibe tipoTicket) ---
+// ─────────────────────────────
+// ✅ Crear ticket
+// ─────────────────────────────
 async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫') {
-  // Limpiar nombre de usuario para el canal
   let username = user.username.toLowerCase().replace(/[^a-z0-9]/g, '-');
   if (username.length > 20) username = username.slice(0, 20);
 
-  // Evitar tickets duplicados
   const existing = guild.channels.cache.find(c => c.name === `ticket-${username}`);
   if (existing) {
     return interaction.reply({ content: `❌ Ya tienes un ticket abierto: ${existing}`, ephemeral: true });
   }
 
-  // Crear canal
   const ticketChannel = await guild.channels.create({
     name: `ticket-${username}`,
     type: ChannelType.GuildText,
@@ -304,7 +129,6 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
     ],
   });
 
-  // Botón de cerrar ticket
   const closeRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('close_ticket')
@@ -312,10 +136,9 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
       .setStyle(ButtonStyle.Danger)
   );
 
-  // Embed de bienvenida
   const embed = new EmbedBuilder()
     .setTitle(`🎫 Ticket de ${tipoTicket} - POD`)
-    .setDescription(`Hola ${user}, un miembro del staff se pondrá en contacto contigo a la brevedad.`)
+    .setDescription(`Hola ${user}, un miembro del staff se pondrá en contacto contigo pronto.`)
     .setColor(0x1F8B4C)
     .addFields(
       { name: 'Usuario', value: `${user.tag}`, inline: true },
@@ -325,21 +148,134 @@ async function createTicket(interaction, user, guild, tipoTicket = 'Soporte 🎫
     .setFooter({ text: 'Players On Duty - Gestión de Tickets', iconURL: user.displayAvatarURL() });
 
   await ticketChannel.send({ embeds: [embed], components: [closeRow] });
+
+  // 🔹 Log de ticket creado
+  await sendLog(guild, {
+    title: '🎫 Ticket creado',
+    color: 0x2ECC71,
+    fields: [
+      { name: 'Usuario', value: `${user.tag}`, inline: true },
+      { name: 'Tipo', value: tipoTicket, inline: true },
+      { name: 'Canal', value: `<#${ticketChannel.id}>`, inline: true },
+    ]
+  });
+
   return interaction.reply({ content: `✅ Tu ticket de ${tipoTicket} ha sido creado: ${ticketChannel}`, ephemeral: true });
 }
 
+// ─────────────────────────────
+// ✅ Interacciones (botones, menús, comandos)
+// ─────────────────────────────
+client.on('interactionCreate', async interaction => {
+  try {
+    const guild = interaction.guild;
+    const user = interaction.user;
+
+    // Cerrar ticket
+    if (interaction.isButton() && interaction.customId === 'close_ticket') {
+      const member = interaction.member;
+      if (!allowedUsers.includes(member.id) && !member.roles.cache.some(r => allowedRoles.includes(r.id))) {
+        return interaction.reply({ content: '❌ No tienes permiso para cerrar este ticket.', ephemeral: true });
+      }
+
+      await sendLog(interaction.guild, {
+        title: '🔒 Ticket cerrado',
+        color: 0xE67E22,
+        description: `Ticket cerrado por **${interaction.user.tag}** en <#${interaction.channel.id}>`
+      });
+
+      await interaction.channel.delete().catch(err => console.error('❌ Error al eliminar ticket:', err));
+      return;
+    }
+
+    // Select menú para abrir ticket
+    if (interaction.isStringSelectMenu() && interaction.customId === 'open_ticket_select') {
+      const selected = interaction.values[0];
+      let tipoTicket = 'Soporte 🎫';
+      if (selected === 'ticket_se') tipoTicket = 'Save Edit';
+      if (selected === 'ticket_lm') tipoTicket = 'Local Mods';
+      if (selected === 'ticket_soporte') tipoTicket = 'Soporte';
+      await createTicket(interaction, user, guild, tipoTicket);
+      return;
+    }
+
+    // Comandos slash
+    if (!interaction.isChatInputCommand()) return;
+
+    if (
+      !allowedUsers.includes(interaction.user.id) &&
+      !interaction.member.roles.cache.some(role => allowedRoles.includes(role.id))
+    ) {
+      return interaction.reply({ content: '❌ No tienes permiso para usar este comando.', flags: 64 });
+    }
+
+    const command = interaction.commandName;
+    const name = interaction.options.getString('nombre');
+    const channel = interaction.channel;
+
+    switch (command) {
+      case 'test': await sendTeamUpdate(channel, 'Ejemplo: Un nuevo miembro se unió al equipo 🎉'); break;
+      case 'training': await sendTeamUpdate(channel, `• **${name}** se unió como **Trial Driver** 🚚`, 0x2ECC71); break;
+      case 'join': await sendTeamUpdate(channel, `• **${name}** se unió como **Driver** 🚚`, 0x2ECC71); break;
+      case 'media': await sendTeamUpdate(channel, `• **${name}** se unió al **Media Team** 📸`, 0x9B59B6); break;
+      case 'hr': await sendTeamUpdate(channel, `• **${name}** se unió a **Human Resources** 👩‍💻`, 0x9B59B6); break;
+      case 'admin': await sendTeamUpdate(channel, `• **${name}** se unió como **Staff SE** 🛠️`, 0xF1C40F); break;
+      case 'staff': await sendTeamUpdate(channel, `• **${name}** se ha unido al **Staff LM** 🧩`, 0x1F618D); break;
+      case 'leave': await sendTeamUpdate(channel, `• **${name}** dejó la VTC 👋`, 0xE74C3C); break;
+      case 'ban': await sendTeamUpdate(channel, `• **${name}** ha sido **baneado** 🚫`, 0xC0392B); break;
+    }
+  } catch (err) {
+    console.error('❌ Error en interactionCreate:', err);
+  }
+});
+
+// ─────────────────────────────
+// ✅ Logs de moderación
+// ─────────────────────────────
+client.on('messageDelete', async message => {
+  if (!message.guild || message.author?.bot) return;
+  await sendLog(message.guild, {
+    title: '🗑️ Mensaje eliminado',
+    color: 0xE74C3C,
+    fields: [
+      { name: 'Autor', value: `${message.author.tag}`, inline: true },
+      { name: 'Canal', value: `${message.channel}`, inline: true },
+      { name: 'Contenido', value: message.content?.slice(0, 1024) || '*Sin contenido*' },
+    ]
+  });
+});
+
+client.on('messageUpdate', async (oldMsg, newMsg) => {
+  if (!newMsg.guild || oldMsg.author?.bot) return;
+  if (oldMsg.content === newMsg.content) return;
+  await sendLog(newMsg.guild, {
+    title: '✏️ Mensaje editado',
+    color: 0xF1C40F,
+    fields: [
+      { name: 'Autor', value: `${oldMsg.author.tag}`, inline: true },
+      { name: 'Canal', value: `${oldMsg.channel}`, inline: true },
+      { name: 'Antes', value: oldMsg.content?.slice(0, 1024) || '*Vacío*' },
+      { name: 'Después', value: newMsg.content?.slice(0, 1024) || '*Vacío*' },
+    ]
+  });
+});
+
+client.on('guildMemberAdd', async member => {
+  await sendLog(member.guild, {
+    title: '✅ Usuario unido',
+    color: 0x2ECC71,
+    description: `**${member.user.tag}** se ha unido al servidor.`,
+    thumbnail: { url: member.user.displayAvatarURL() }
+  });
+});
+
+client.on('guildMemberRemove', async member => {
+  await sendLog(member.guild, {
+    title: '❌ Usuario salió',
+    color: 0xE74C3C,
+    description: `**${member.user.tag}** ha salido o fue expulsado.`,
+    thumbnail: { url: member.user.displayAvatarURL() }
+  });
+});
+
 client.login(process.env.DISCORD_TOKEN);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
